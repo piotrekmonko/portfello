@@ -1,0 +1,9 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    queries: "dbschema/queries.sql"
+    schema: "dbschema/migrations"
+    gen:
+      go:
+        package: "dao"
+        out: "pkg/dao"

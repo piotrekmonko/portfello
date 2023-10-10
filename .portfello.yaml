@@ -1,0 +1,5 @@
+database:
+  dsn: "postgres://user:pass@localhost:5432/portfello?sslmode=disable"
+graphql:
+  port: "8080"
+  playground: true

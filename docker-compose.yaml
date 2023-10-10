@@ -1,0 +1,34 @@
+version: '3'
+
+services:
+  db:
+    image: bitnami/postgresql:latest
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRESQL_USER=user
+      - POSTGRESQL_PASSWORD=pass
+      - POSTGRESQL_DATABASE=portfello
+    volumes:
+      - db:/bitnami/postgresql
+    healthcheck:
+      test: "pg_isready -h db -U user"
+      interval: 1s
+      timeout: 5s
+      retries: 150
+  redis:
+    image: "bitnami/redis:latest"
+    ports:
+      - "6379:6379"
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+  nats:
+    image: "nats:alpine"
+    ports:
+      - "4222:4222"
+      - "6222:6222"
+      - "8222:8222"
+
+volumes:
+  db:
