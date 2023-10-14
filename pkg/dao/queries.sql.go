@@ -10,7 +10,7 @@ import (
 )
 
 const usersList = `-- name: UsersList :many
-SELECT id, display_name, is_active, created_at FROM users ORDER BY display_name
+SELECT id, display_name, email, created_at FROM users ORDER BY display_name
 `
 
 func (q *Queries) UsersList(ctx context.Context) ([]User, error) {
@@ -25,7 +25,7 @@ func (q *Queries) UsersList(ctx context.Context) ([]User, error) {
 		if err := rows.Scan(
 			&i.ID,
 			&i.DisplayName,
-			&i.IsActive,
+			&i.Email,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err

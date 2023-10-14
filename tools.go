@@ -6,4 +6,5 @@ package tools
 import (
 	_ "github.com/99designs/gqlgen"
 	_ "github.com/spf13/cobra"
+	_ "github.com/sqlc-dev/sqlc/cmd/sqlc"
 )

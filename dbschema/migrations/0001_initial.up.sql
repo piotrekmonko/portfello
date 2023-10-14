@@ -4,7 +4,7 @@ create table users
         constraint users_pk
             primary key,
     display_name text                    not null,
-    is_active    bool      default false not null,
+    email        text                    not null,
     created_at   timestamp default now() not null
 );
 

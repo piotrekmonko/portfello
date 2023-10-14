@@ -12,19 +12,34 @@ import (
 	"github.com/piotrekmonko/portfello/pkg/graph/model"
 )
 
-// CreateTodo is the resolver for the createTodo field.
-func (r *mutationResolver) CreateTodo(ctx context.Context, input model.NewTodo) (*model.Todo, error) {
-	panic(fmt.Errorf("not implemented: CreateTodo - createTodo"))
+// UserCreate is the resolver for the userCreate field.
+func (r *mutationResolver) UserCreate(ctx context.Context, input model.NewUser) (*dao.User, error) {
+	panic(fmt.Errorf("not implemented: UserCreate - userCreate"))
 }
 
-// Todos is the resolver for the todos field.
-func (r *queryResolver) Todos(ctx context.Context) ([]*model.Todo, error) {
-	panic(fmt.Errorf("not implemented: Todos - todos"))
+// UserAssignRoles is the resolver for the userAssignRoles field.
+func (r *mutationResolver) UserAssignRoles(ctx context.Context, input []string) ([]*model.Role, error) {
+	panic(fmt.Errorf("not implemented: UserAssignRoles - userAssignRoles"))
+}
+
+// UserGetRoles is the resolver for the userGetRoles field.
+func (r *mutationResolver) UserGetRoles(ctx context.Context, userID string) ([]model.RoleID, error) {
+	panic(fmt.Errorf("not implemented: UserGetRoles - userGetRoles"))
+}
+
+// Roles is the resolver for the roles field.
+func (r *queryResolver) Roles(ctx context.Context) ([]*model.Role, error) {
+	panic(fmt.Errorf("not implemented: Roles - roles"))
 }
 
 // Users is the resolver for the users field.
 func (r *queryResolver) Users(ctx context.Context) ([]*dao.User, error) {
 	panic(fmt.Errorf("not implemented: Users - users"))
+}
+
+// Email is the resolver for the email field.
+func (r *userResolver) Email(ctx context.Context, obj *dao.User) (string, error) {
+	panic(fmt.Errorf("not implemented: Email - email"))
 }
 
 // Mutation returns MutationResolver implementation.
@@ -33,5 +48,9 @@ func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
+// User returns UserResolver implementation.
+func (r *Resolver) User() UserResolver { return &userResolver{r} }
+
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+type userResolver struct{ *Resolver }

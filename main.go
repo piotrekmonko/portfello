@@ -19,6 +19,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
+//go:generate sqlc generate
+//go:generate go run github.com/99designs/gqlgen generate
 package main
 
 import "github.com/piotrekmonko/portfello/cmd"

@@ -11,6 +11,6 @@ import (
 type User struct {
 	ID          string
 	DisplayName string
-	IsActive    bool
+	Email       string
 	CreatedAt   time.Time
 }
