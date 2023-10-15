@@ -13,13 +13,13 @@ const usersList = `-- name: UsersList :many
 SELECT id, display_name, email, created_at FROM users ORDER BY display_name
 `
 
-func (q *Queries) UsersList(ctx context.Context) ([]User, error) {
+func (q *Queries) UsersList(ctx context.Context) ([]*User, error) {
 	rows, err := q.db.QueryContext(ctx, usersList)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []User
+	var items []*User
 	for rows.Next() {
 		var i User
 		if err := rows.Scan(
@@ -30,7 +30,7 @@ func (q *Queries) UsersList(ctx context.Context) ([]User, error) {
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err

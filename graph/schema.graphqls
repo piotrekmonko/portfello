@@ -10,7 +10,7 @@ type User {
 }
 
 type Query {
-  roles: [Role!]!
+  userRoles(userId: String!): [RoleId!]
   users: [User!]!
 }
 
@@ -28,5 +28,4 @@ input NewUser {
 type Mutation {
   userCreate(input: NewUser!): User!
   userAssignRoles(input: [String!]): [Role!]
-  userGetRoles(userId: String!): [RoleId!]
 }

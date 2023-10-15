@@ -7,4 +7,3 @@ create table users
     email        text                    not null,
     created_at   timestamp default now() not null
 );
-

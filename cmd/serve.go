@@ -24,10 +24,13 @@ package cmd
 import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/piotrekmonko/portfello/pkg/auth"
 	"github.com/piotrekmonko/portfello/pkg/config"
+	"github.com/piotrekmonko/portfello/pkg/dao"
 	"github.com/piotrekmonko/portfello/pkg/graph"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -38,15 +41,39 @@ var serveCmd = &cobra.Command{
 	Short: "Start GraphQL server",
 	Run: func(cmd *cobra.Command, args []string) {
 		conf := config.New()
-		srv := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{}}))
 
-		http.Handle("/query", srv)
-		if conf.GraphqlPlayground {
-			http.Handle("/", playground.Handler("GraphQL playground", "/query"))
+		db, dbQuerier, err := dao.NewDAO(conf.DatabaseDSN)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer db.Close()
+
+		authProvider, err := auth.NewAuth0Provider(cmd.Context(), conf)
+		if err != nil {
+			log.Fatal(err)
+		}
+		authService := auth.New(authProvider)
+
+		graphResolver := &graph.Resolver{
+			DbQueries:   dbQuerier,
+			AuthService: authService,
+		}
+		srv := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{Resolvers: graphResolver}))
+		mux := http.NewServeMux()
+		httpSrv := &http.Server{
+			Addr:              ":" + conf.GraphqlPort,
+			Handler:           mux,
+			ReadHeaderTimeout: time.Second,
 		}
 
-		log.Printf("connect to http://localhost:%s/ for GraphQL playground", conf.GraphqlPort)
-		log.Fatal(http.ListenAndServe(":"+conf.GraphqlPort, nil))
+		mux.Handle("/query", srv)
+		if conf.GraphqlPlayground {
+			log.Printf("connect to http://localhost:%s/ for GraphQL playground", conf.GraphqlPort)
+			mux.Handle("/", playground.Handler("GraphQL playground", "/query"))
+		}
+
+		log.Printf("serving on http://localhost:%s/", conf.GraphqlPort)
+		log.Fatal(httpSrv.ListenAndServe())
 	},
 }
 

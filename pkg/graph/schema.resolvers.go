@@ -22,24 +22,14 @@ func (r *mutationResolver) UserAssignRoles(ctx context.Context, input []string) 
 	panic(fmt.Errorf("not implemented: UserAssignRoles - userAssignRoles"))
 }
 
-// UserGetRoles is the resolver for the userGetRoles field.
-func (r *mutationResolver) UserGetRoles(ctx context.Context, userID string) ([]model.RoleID, error) {
-	panic(fmt.Errorf("not implemented: UserGetRoles - userGetRoles"))
-}
-
-// Roles is the resolver for the roles field.
-func (r *queryResolver) Roles(ctx context.Context) ([]*model.Role, error) {
-	panic(fmt.Errorf("not implemented: Roles - roles"))
+// UserRoles is the resolver for the userRoles field.
+func (r *queryResolver) UserRoles(ctx context.Context, userID string) ([]model.RoleID, error) {
+	panic(fmt.Errorf("not implemented: UserRoles - userRoles"))
 }
 
 // Users is the resolver for the users field.
 func (r *queryResolver) Users(ctx context.Context) ([]*dao.User, error) {
-	panic(fmt.Errorf("not implemented: Users - users"))
-}
-
-// Email is the resolver for the email field.
-func (r *userResolver) Email(ctx context.Context, obj *dao.User) (string, error) {
-	panic(fmt.Errorf("not implemented: Email - email"))
+	return r.DbQueries.UsersList(ctx)
 }
 
 // Mutation returns MutationResolver implementation.
@@ -48,9 +38,5 @@ func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
-// User returns UserResolver implementation.
-func (r *Resolver) User() UserResolver { return &userResolver{r} }
-
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
-type userResolver struct{ *Resolver }

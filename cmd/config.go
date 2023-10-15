@@ -19,12 +19,32 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
-//go:generate go run github.com/sqlc-dev/sqlc/cmd/sqlc generate
-//go:generate go run github.com/99designs/gqlgen generate
-package main
+package cmd
 
-import "github.com/piotrekmonko/portfello/cmd"
+import (
+	"encoding/json"
+	"fmt"
+	"github.com/piotrekmonko/portfello/pkg/config"
+	"log"
 
-func main() {
-	cmd.Execute()
+	"github.com/spf13/cobra"
+)
+
+// configCmd represents the config command
+var configCmd = &cobra.Command{
+	Use:   "config",
+	Short: "Config verifies configuration is complete",
+	Run: func(cmd *cobra.Command, args []string) {
+		pretty, err := json.MarshalIndent(config.New(), "", "  ")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Printf("Parsed configuration values:\n%s\n", string(pretty))
+	},
+}
+
+func init() {
+	provisionCmd.AddCommand(configCmd)
+	configCmd.Flags().BoolP("show", "s", false, "Show the parsed config values")
 }
