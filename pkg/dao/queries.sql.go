@@ -9,22 +9,22 @@ import (
 	"context"
 )
 
-const usersList = `-- name: UsersList :many
-SELECT id, display_name, email, created_at FROM users ORDER BY display_name
+const historyList = `-- name: HistoryList :many
+SELECT id, event, email, created_at FROM history ORDER BY id
 `
 
-func (q *Queries) UsersList(ctx context.Context) ([]*User, error) {
-	rows, err := q.db.QueryContext(ctx, usersList)
+func (q *Queries) HistoryList(ctx context.Context) ([]*History, error) {
+	rows, err := q.db.QueryContext(ctx, historyList)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []*User
+	var items []*History
 	for rows.Next() {
-		var i User
+		var i History
 		if err := rows.Scan(
 			&i.ID,
-			&i.DisplayName,
+			&i.Event,
 			&i.Email,
 			&i.CreatedAt,
 		); err != nil {

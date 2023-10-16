@@ -2,6 +2,7 @@ package graph
 
 import (
 	"github.com/piotrekmonko/portfello/pkg/auth"
+	"github.com/piotrekmonko/portfello/pkg/config"
 	"github.com/piotrekmonko/portfello/pkg/dao"
 )
 
@@ -10,6 +11,7 @@ import (
 // It serves as dependency injection for your app, add any dependencies you require here.
 
 type Resolver struct {
+	Conf        *config.Config
 	DbQueries   *dao.Queries
 	AuthService *auth.Service
 }

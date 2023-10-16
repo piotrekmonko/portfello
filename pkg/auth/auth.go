@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/auth0/go-auth0/management"
 	"github.com/eko/gocache/lib/v4/cache"
 	"github.com/eko/gocache/lib/v4/store"
 	gocache_store "github.com/eko/gocache/store/go_cache/v4"
@@ -14,47 +13,72 @@ import (
 
 type Service struct {
 	provider Provider
-	cUsers   *cache.Cache[*management.User]
+	cUsers   *cache.Cache[*User]
 }
 
 type Provider interface {
-	GetUserByEmail(ctx context.Context, email string) (*management.User, error)
+	GetUserByEmail(ctx context.Context, email string) (*User, error)
+	ListUsers(ctx context.Context) ([]*User, int, error)
+	CreateUser(ctx context.Context, email string, name string, roles Roles) (*User, error)
+	AssignRoles(ctx context.Context, email string, roles []RoleID) ([]RoleID, error)
 }
 
 func New(p Provider) *Service {
 	gocacheClient := gocache.New(50*time.Minute, 100*time.Minute)
 	gocacheStore := gocache_store.NewGoCache(gocacheClient)
 	return &Service{provider: p,
-		cUsers: cache.New[*management.User](gocacheStore),
+		cUsers: cache.New[*User](gocacheStore),
 	}
 }
 
-func (s *Service) GetUsers(ctx context.Context) {
+func (s *Service) GetUsers(ctx context.Context) ([]*User, error) {
+	users, _, err := s.provider.ListUsers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot list users: %w", err)
+	}
 
+	return users, nil
 }
 
 func (s *Service) GetUser(ctx context.Context, userEmail string) (*User, error) {
-	auth0User, err := s.cUsers.Get(ctx, userEmail)
+	user, err := s.cUsers.Get(ctx, userEmail)
 	if err != nil && !errors.Is(err, store.NotFound{}) {
 		return nil, fmt.Errorf("cannot reach user cache: %w", err)
 	}
 
-	if auth0User == nil {
-		auth0User, err = s.provider.GetUserByEmail(ctx, userEmail)
+	if user == nil {
+		user, err = s.provider.GetUserByEmail(ctx, userEmail)
 		if err != nil {
 			return nil, fmt.Errorf("cannot find user in auth0: %w", err)
 		}
 
-		err = s.cUsers.Set(ctx, userEmail, auth0User)
+		err = s.cUsers.Set(ctx, userEmail, user)
 		if err != nil {
 			return nil, fmt.Errorf("cannot save auth0 user in cache: %w", err)
 		}
 	}
 
-	return &User{
-		ID:          auth0User.GetID(),
-		Email:       auth0User.GetEmail(),
-		DisplayName: auth0User.GetName(),
-		CreatedAt:   auth0User.GetCreatedAt(),
-	}, nil
+	return user, nil
+}
+
+func (s *Service) GetUserRoles(ctx context.Context, id string) ([]RoleID, error) {
+	u, err := s.GetUser(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return u.Roles, nil
+}
+
+func (s *Service) CreateUser(ctx context.Context, email string, name string, roles Roles) (*User, error) {
+	return s.provider.CreateUser(ctx, email, name, roles)
+}
+
+func (s *Service) AssignRoles(ctx context.Context, email string, roles []RoleID) ([]RoleID, error) {
+	user, err := s.GetUser(ctx, email)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.provider.AssignRoles(ctx, user.ID, roles)
 }

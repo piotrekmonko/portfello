@@ -25,8 +25,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/piotrekmonko/portfello/pkg/config"
-	"log"
-
 	"github.com/spf13/cobra"
 )
 
@@ -35,12 +33,15 @@ var configCmd = &cobra.Command{
 	Use:   "config",
 	Short: "Config verifies configuration is complete",
 	Run: func(cmd *cobra.Command, args []string) {
-		pretty, err := json.MarshalIndent(config.New(), "", "  ")
-		if err != nil {
-			log.Fatal(err)
-		}
+		conf := config.New()
+		err := conf.Validate()
+		cobra.CheckErr(err)
 
-		fmt.Printf("Parsed configuration values:\n%s\n", string(pretty))
+		if showConf, _ := cmd.Flags().GetBool("show"); showConf {
+			pretty, err := json.MarshalIndent(conf, "", "  ")
+			cobra.CheckErr(err)
+			fmt.Printf("Parsed configuration values:\n%s\n", string(pretty))
+		}
 	},
 }
 

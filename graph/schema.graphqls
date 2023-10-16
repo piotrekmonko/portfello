@@ -1,31 +1,18 @@
-type Role {
-  userId: String!
-  role: RoleId!
-}
-
-type User {
-  id: ID!
-  email: String!
-  displayName: String!
-}
-
-type Query {
-  userRoles(userId: String!): [RoleId!]
-  users: [User!]!
-}
-
 enum RoleId {
   user
   admin
   super
 }
 
-input NewUser {
-  email: String!
-  displayName: String!
+type Role {
+  userId: String!
+  role: RoleId!
+}
+
+type Query {
+  ping: String!
 }
 
 type Mutation {
-  userCreate(input: NewUser!): User!
-  userAssignRoles(input: [String!]): [Role!]
+  selfCheck: Boolean!
 }

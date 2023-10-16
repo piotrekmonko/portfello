@@ -6,30 +6,16 @@ package graph
 
 import (
 	"context"
-	"fmt"
-
-	"github.com/piotrekmonko/portfello/pkg/dao"
-	"github.com/piotrekmonko/portfello/pkg/graph/model"
 )
 
-// UserCreate is the resolver for the userCreate field.
-func (r *mutationResolver) UserCreate(ctx context.Context, input model.NewUser) (*dao.User, error) {
-	panic(fmt.Errorf("not implemented: UserCreate - userCreate"))
+// SelfCheck is the resolver for the selfCheck field.
+func (r *mutationResolver) SelfCheck(ctx context.Context) (bool, error) {
+	return true, r.Conf.Validate()
 }
 
-// UserAssignRoles is the resolver for the userAssignRoles field.
-func (r *mutationResolver) UserAssignRoles(ctx context.Context, input []string) ([]*model.Role, error) {
-	panic(fmt.Errorf("not implemented: UserAssignRoles - userAssignRoles"))
-}
-
-// UserRoles is the resolver for the userRoles field.
-func (r *queryResolver) UserRoles(ctx context.Context, userID string) ([]model.RoleID, error) {
-	panic(fmt.Errorf("not implemented: UserRoles - userRoles"))
-}
-
-// Users is the resolver for the users field.
-func (r *queryResolver) Users(ctx context.Context) ([]*dao.User, error) {
-	return r.DbQueries.UsersList(ctx)
+// Ping is the resolver for the ping field.
+func (r *queryResolver) Ping(ctx context.Context) (string, error) {
+	return "pong", nil
 }
 
 // Mutation returns MutationResolver implementation.

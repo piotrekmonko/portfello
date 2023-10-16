@@ -55,24 +55,25 @@ var serveCmd = &cobra.Command{
 		authService := auth.New(authProvider)
 
 		graphResolver := &graph.Resolver{
+			Conf:        conf,
 			DbQueries:   dbQuerier,
 			AuthService: authService,
 		}
 		srv := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{Resolvers: graphResolver}))
 		mux := http.NewServeMux()
 		httpSrv := &http.Server{
-			Addr:              ":" + conf.GraphqlPort,
+			Addr:              ":" + conf.Graph.Port,
 			Handler:           mux,
 			ReadHeaderTimeout: time.Second,
 		}
 
 		mux.Handle("/query", srv)
-		if conf.GraphqlPlayground {
-			log.Printf("connect to http://localhost:%s/ for GraphQL playground", conf.GraphqlPort)
+		if conf.Graph.EnablePlayground {
+			log.Printf("connect to http://localhost:%s/ for GraphQL playground", conf.Graph.Port)
 			mux.Handle("/", playground.Handler("GraphQL playground", "/query"))
 		}
 
-		log.Printf("serving on http://localhost:%s/", conf.GraphqlPort)
+		log.Printf("serving on http://localhost:%s/", conf.Graph.Port)
 		log.Fatal(httpSrv.ListenAndServe())
 	},
 }

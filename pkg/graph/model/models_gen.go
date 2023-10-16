@@ -3,60 +3,16 @@
 package model
 
 import (
-	"fmt"
-	"io"
-	"strconv"
+	"github.com/piotrekmonko/portfello/pkg/auth"
 )
 
 type NewUser struct {
-	Email       string `json:"email"`
-	DisplayName string `json:"displayName"`
+	Email       string        `json:"email"`
+	DisplayName string        `json:"displayName"`
+	Roles       []auth.RoleID `json:"roles"`
 }
 
 type Role struct {
-	UserID string `json:"userId"`
-	Role   RoleID `json:"role"`
-}
-
-type RoleID string
-
-const (
-	RoleIDUser  RoleID = "user"
-	RoleIDAdmin RoleID = "admin"
-	RoleIDSuper RoleID = "super"
-)
-
-var AllRoleID = []RoleID{
-	RoleIDUser,
-	RoleIDAdmin,
-	RoleIDSuper,
-}
-
-func (e RoleID) IsValid() bool {
-	switch e {
-	case RoleIDUser, RoleIDAdmin, RoleIDSuper:
-		return true
-	}
-	return false
-}
-
-func (e RoleID) String() string {
-	return string(e)
-}
-
-func (e *RoleID) UnmarshalGQL(v interface{}) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = RoleID(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid RoleId", str)
-	}
-	return nil
-}
-
-func (e RoleID) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
+	UserID string      `json:"userId"`
+	Role   auth.RoleID `json:"role"`
 }

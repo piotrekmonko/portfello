@@ -22,8 +22,9 @@ THE SOFTWARE.
 package cmd
 
 import (
+	"fmt"
+	"github.com/piotrekmonko/portfello/pkg/auth"
 	"github.com/piotrekmonko/portfello/pkg/config"
-	"github.com/piotrekmonko/portfello/pkg/dao"
 	"github.com/spf13/cobra"
 	"log"
 )
@@ -31,29 +32,27 @@ import (
 // provisionCmd represents the provision command
 var provisionCmd = &cobra.Command{
 	Use:   "provision",
-	Short: "Add demo objects to database",
+	Short: "Add objects to systems",
 	Run: func(cmd *cobra.Command, args []string) {
 		conf := config.New()
-		db, q, err := dao.NewDAO(conf.DatabaseDSN)
+		authProvider, err := auth.NewAuth0Provider(cmd.Context(), conf)
 		if err != nil {
 			log.Fatal(err)
 		}
+		authService := auth.New(authProvider)
 
-		defer db.Close()
-		q.UsersList(cmd.Context())
+		if email, _ := cmd.Flags().GetString("user"); email != "" {
+			user, err := authService.CreateUser(cmd.Context(), email, email, auth.Roles{auth.RoleUser})
+			if err != nil {
+				cobra.CheckErr(err)
+			}
+			fmt.Printf("User created: %+v\n", user)
+		}
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(provisionCmd)
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// provisionCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// provisionCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	provisionCmd.Flags().StringP("user", "u", "", "Add a new user")
 }

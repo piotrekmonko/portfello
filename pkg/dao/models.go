@@ -8,9 +8,9 @@ import (
 	"time"
 )
 
-type User struct {
-	ID          string
-	DisplayName string
-	Email       string
-	CreatedAt   time.Time
+type History struct {
+	ID        string
+	Event     string
+	Email     string
+	CreatedAt time.Time
 }

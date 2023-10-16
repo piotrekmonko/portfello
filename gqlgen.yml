@@ -68,6 +68,7 @@ skip_mod_tidy: true
 autobind:
   - "github.com/piotrekmonko/portfello/pkg/graph/model"
   - "github.com/piotrekmonko/portfello/pkg/dao"
+  - "github.com/piotrekmonko/portfello/pkg/auth"
 
 # This section declares type mapping between the GraphQL and go type systems
 #

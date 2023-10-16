@@ -1,5 +1,10 @@
-database:
-  dsn: "postgres://user:pass@localhost:5432/portfello?sslmode=disable"
+database_dsn: "postgres://user:pass@localhost:5432/portfello?sslmode=disable"
 graphql:
   port: "8080"
-  playground: true
+  enable_playground: true
+auth:
+  domain: "YOUR_DOMAIN.auth0.com"
+  client_id: "YOUR_CLIENT_ID"
+  client_secret: "YOUR_CLIENT_SECRET"
+  audience: "YOUR_AUDIENCE"
+  connection_id: "con_CONNECTION_ID"

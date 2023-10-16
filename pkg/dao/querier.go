@@ -9,7 +9,7 @@ import (
 )
 
 type Querier interface {
-	UsersList(ctx context.Context) ([]*User, error)
+	HistoryList(ctx context.Context) ([]*History, error)
 }
 
 var _ Querier = (*Queries)(nil)
