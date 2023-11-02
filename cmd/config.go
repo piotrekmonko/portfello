@@ -30,8 +30,9 @@ import (
 
 // configCmd represents the config command
 var configCmd = &cobra.Command{
-	Use:   "config",
-	Short: "Config verifies configuration is complete",
+	Use:     "config",
+	Aliases: []string{"conf"},
+	Short:   "Config verifies configuration is complete",
 	Run: func(cmd *cobra.Command, args []string) {
 		conf := config.New()
 		err := conf.Validate()
@@ -46,6 +47,6 @@ var configCmd = &cobra.Command{
 }
 
 func init() {
-	provisionCmd.AddCommand(configCmd)
+	rootCmd.AddCommand(configCmd)
 	configCmd.Flags().BoolP("show", "s", false, "Show the parsed config values")
 }

@@ -23,19 +23,26 @@ package cmd
 
 import (
 	"fmt"
+	"go.uber.org/zap"
 	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
-var cfgFile string
+const baseVersion = "v1.0.0"
+
+var (
+	cfgFile     string
+	buildNumber = "dev"
+)
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "portfello",
-	Short: "Backend services for PortfelloApp",
-	Long:  `PortfelloApp is an opensource project for managing your household budget.`,
+	Use:     "portfello",
+	Short:   "Backend services for PortfelloApp",
+	Long:    `PortfelloApp is an opensource project for managing your household budget.`,
+	Version: "v1.0.0-dev",
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },
@@ -44,6 +51,7 @@ var rootCmd = &cobra.Command{
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
+	rootCmd.Version = fmt.Sprintf("%s-%s", baseVersion, buildNumber)
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
@@ -58,6 +66,8 @@ func init() {
 	// will be global for your application.
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.portfello.yaml)")
+	rootCmd.PersistentFlags().String("level", zap.InfoLevel.String(),
+		"set logger level (one of: debug, info, warn, error, fatal)")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
@@ -89,7 +99,7 @@ func initConfig() {
 	for _, configFile := range []string{".portfello", ".portfello-local"} {
 		viper.SetConfigName(configFile)
 		if err := viper.MergeInConfig(); err == nil {
-			fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
+			_, _ = fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
 		}
 	}
 }

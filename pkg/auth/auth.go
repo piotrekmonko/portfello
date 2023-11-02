@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/eko/gocache/lib/v4/cache"
 	"github.com/eko/gocache/lib/v4/store"
 	gocache_store "github.com/eko/gocache/store/go_cache/v4"
@@ -21,6 +22,7 @@ type Provider interface {
 	ListUsers(ctx context.Context) ([]*User, int, error)
 	CreateUser(ctx context.Context, email string, name string, roles Roles) (*User, error)
 	AssignRoles(ctx context.Context, email string, roles []RoleID) ([]RoleID, error)
+	ValidateToken(ctx context.Context, token string) (userID string, err error)
 }
 
 func New(p Provider) *Service {
@@ -81,4 +83,17 @@ func (s *Service) AssignRoles(ctx context.Context, email string, roles []RoleID)
 	}
 
 	return s.provider.AssignRoles(ctx, user.ID, roles)
+}
+
+func (s *Service) HasRole(ctx context.Context, obj interface{}, next graphql.Resolver, role RoleID) (res interface{}, err error) {
+	user := GetCtxUser(ctx)
+	if user == nil {
+		return nil, ErrNotAuthorized
+	}
+
+	if Roles(user.Roles).Has(role) {
+		return next(ctx)
+	}
+
+	return nil, nil
 }

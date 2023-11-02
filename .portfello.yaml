@@ -1,5 +1,6 @@
 database_dsn: "postgres://user:pass@localhost:5432/portfello?sslmode=disable"
 graphql:
+  host: "http://localhost"
   port: "8080"
   enable_playground: true
 auth:

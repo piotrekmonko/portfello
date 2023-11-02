@@ -22,31 +22,47 @@ THE SOFTWARE.
 package cmd
 
 import (
+	"context"
 	"fmt"
+	"github.com/brianvoe/gofakeit/v6"
+	"github.com/lithammer/shortuuid/v4"
 	"github.com/piotrekmonko/portfello/pkg/auth"
 	"github.com/piotrekmonko/portfello/pkg/config"
+	"github.com/piotrekmonko/portfello/pkg/dao"
 	"github.com/spf13/cobra"
 	"log"
+	"time"
 )
 
 // provisionCmd represents the provision command
 var provisionCmd = &cobra.Command{
-	Use:   "provision",
-	Short: "Add objects to systems",
+	Use:     "provision",
+	Aliases: []string{"prov"},
+	Short:   "Add objects to systems",
 	Run: func(cmd *cobra.Command, args []string) {
+		ctx := cmd.Context()
 		conf := config.New()
-		authProvider, err := auth.NewAuth0Provider(cmd.Context(), conf)
+		authProvider, err := auth.NewAuth0Provider(ctx, conf)
 		if err != nil {
 			log.Fatal(err)
 		}
 		authService := auth.New(authProvider)
+		db, dbq, err := dao.NewDAO(ctx, conf.DatabaseDSN)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer db.Close()
 
 		if email, _ := cmd.Flags().GetString("user"); email != "" {
-			user, err := authService.CreateUser(cmd.Context(), email, email, auth.Roles{auth.RoleUser})
-			if err != nil {
+			if err := provisionUser(cmd.Context(), authService, email); err != nil {
 				cobra.CheckErr(err)
 			}
-			fmt.Printf("User created: %+v\n", user)
+		}
+
+		if testData, _ := cmd.Flags().GetBool("test"); testData {
+			if err := provisionTestData(cmd.Context(), dbq); err != nil {
+				cobra.CheckErr(err)
+			}
 		}
 	},
 }
@@ -55,4 +71,52 @@ func init() {
 	rootCmd.AddCommand(provisionCmd)
 
 	provisionCmd.Flags().StringP("user", "u", "", "Add a new user")
+	provisionCmd.Flags().BoolP("test", "t", false, "Add example test data to database")
+}
+
+func provisionUser(ctx context.Context, authService *auth.Service, email string) error {
+	user, err := authService.CreateUser(ctx, email, email, auth.Roles{auth.RoleUser})
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("User created: %+v\n", user)
+	return nil
+}
+
+func provisionTestData(ctx context.Context, dbq *dao.DAO) error {
+	q, rollbacker, err := dbq.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+	defer rollbacker()
+
+	expenses := []float64{100.50, -20.12, -34.14, -3.1415, 60.0, -10.50, -23.99}
+	testUserID := gofakeit.Email()
+
+	testWallet := &dao.WalletInsertParams{
+		ID:        shortuuid.New(),
+		UserID:    testUserID,
+		Balance:   0.0,
+		Currency:  "USD",
+		CreatedAt: time.Now().Add(time.Hour * time.Duration(-1*len(expenses))).UTC(),
+	}
+	if err := q.WalletInsert(ctx, testWallet); err != nil {
+		return err
+	}
+
+	for i, amount := range expenses {
+		testExpense := &dao.ExpenseInsertParams{
+			ID:          shortuuid.New(),
+			WalletID:    testWallet.ID,
+			Amount:      amount,
+			Description: dao.NilStr(gofakeit.HackerPhrase()),
+			CreatedAt:   time.Now().Add(time.Hour * time.Duration(-1*len(expenses)-i)).UTC(),
+		}
+		if err := q.ExpenseInsert(ctx, testExpense); err != nil {
+			return err
+		}
+	}
+
+	return q.Commit()
 }

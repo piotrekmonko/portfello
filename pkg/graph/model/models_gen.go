@@ -3,8 +3,23 @@
 package model
 
 import (
+	"time"
+
 	"github.com/piotrekmonko/portfello/pkg/auth"
 )
+
+type Operation interface {
+	IsOperation()
+	GetID() string
+	GetWalletID() string
+	GetAmount() float64
+	GetDescription() *string
+	GetCreatedAt() time.Time
+}
+
+type CreateWalletInput struct {
+	Currency string `json:"currency"`
+}
 
 type NewUser struct {
 	Email       string        `json:"email"`

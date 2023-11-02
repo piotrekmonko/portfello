@@ -1,0 +1,52 @@
+type Wallet {
+    id: ID!
+    userID: ID!
+    currency: String!
+    createdAt: Time!
+}
+
+interface Operation {
+    id: ID!
+    walletID: ID!
+    amount: Float!
+    description: String
+    createdAt: Time!
+}
+
+type Expense implements Operation {
+    id: ID!
+    walletID: ID!
+    amount: Float!
+    description: String
+    createdAt: Time!
+}
+
+extend type Query {
+    """
+    List wallets of authenticated user.
+    """
+    listWallets: [Wallet!] @hasRole(role: user)
+    """
+    List wallets of other users, needs admin roles.
+    """
+    listWalletsByUserId(userId: String!): [Wallet!] @hasRole(role: admin)
+    """
+    List expenses of a wallet of an authenticated user.
+    """
+    listExpenses(walletId: String!): [Expense!] @hasRole(role: user)
+    """
+    List expenses of another user.
+    """
+    listExpensesByUserId(userId: String!, walletId: String!): [Expense!] @hasRole(role: admin)
+}
+
+input CreateWalletInput {
+    currency: String!
+}
+
+extend type Mutation {
+    """
+    Every user may create any number of Wallets. They may also be assigned read-access to other users Wallets.
+    """
+    createWallet(input: CreateWalletInput!): [Wallet!] @hasRole(role: user)
+}

@@ -6,9 +6,9 @@ type User {
 }
 
 extend type Query {
-    getUserRoles(userId: String!): [RoleId!]
-    listUsers: [User!]!
-    getUser(email: String!): User!
+    getUserRoles(userId: String!): [RoleId!] @hasRole(role: user)
+    listUsers: [User!]! @hasRole(role: admin)
+    getUser(email: String!): User! @hasRole(role: admin)
 }
 
 input NewUser {
@@ -18,6 +18,6 @@ input NewUser {
 }
 
 extend type Mutation {
-    userCreate(newUser: NewUser!): User!
-    userAssignRoles(email: String!, newRoles: [RoleId!]): [RoleId!]
+    userCreate(newUser: NewUser!): User! @hasRole(role: admin)
+    userAssignRoles(email: String!, newRoles: [RoleId!]): [RoleId!] @hasRole(role: admin)
 }

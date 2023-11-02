@@ -1,3 +1,7 @@
+scalar Time
+
+directive @hasRole(role: RoleId!) on FIELD_DEFINITION
+
 enum RoleId {
   user
   admin

@@ -22,17 +22,19 @@ THE SOFTWARE.
 package cmd
 
 import (
-	"github.com/99designs/gqlgen/graphql/handler"
-	"github.com/99designs/gqlgen/graphql/playground"
+	"context"
+	"errors"
 	"github.com/piotrekmonko/portfello/pkg/auth"
 	"github.com/piotrekmonko/portfello/pkg/config"
 	"github.com/piotrekmonko/portfello/pkg/dao"
-	"github.com/piotrekmonko/portfello/pkg/graph"
+	"github.com/piotrekmonko/portfello/pkg/server"
+	"github.com/spf13/cobra"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
-
-	"github.com/spf13/cobra"
 )
 
 // serveCmd represents the serve command
@@ -40,9 +42,10 @@ var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Start GraphQL server",
 	Run: func(cmd *cobra.Command, args []string) {
+		ctx := cmd.Context()
 		conf := config.New()
 
-		db, dbQuerier, err := dao.NewDAO(conf.DatabaseDSN)
+		db, dbQuerier, err := dao.NewDAO(ctx, conf.DatabaseDSN)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -54,27 +57,21 @@ var serveCmd = &cobra.Command{
 		}
 		authService := auth.New(authProvider)
 
-		graphResolver := &graph.Resolver{
-			Conf:        conf,
-			DbQueries:   dbQuerier,
-			AuthService: authService,
-		}
-		srv := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{Resolvers: graphResolver}))
-		mux := http.NewServeMux()
-		httpSrv := &http.Server{
-			Addr:              ":" + conf.Graph.Port,
-			Handler:           mux,
-			ReadHeaderTimeout: time.Second,
-		}
+		sigs := make(chan os.Signal, 1)
+		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 
-		mux.Handle("/query", srv)
-		if conf.Graph.EnablePlayground {
-			log.Printf("connect to http://localhost:%s/ for GraphQL playground", conf.Graph.Port)
-			mux.Handle("/", playground.Handler("GraphQL playground", "/query"))
-		}
+		httpSrv := server.NewServer(ctx, conf, dbQuerier, authService)
+		go func() {
+			if err := httpSrv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+				log.Fatal(err)
+			}
+		}()
+		<-sigs
 
-		log.Printf("serving on http://localhost:%s/", conf.Graph.Port)
-		log.Fatal(httpSrv.ListenAndServe())
+		closeCtx, closeCanc := context.WithTimeout(ctx, time.Second)
+		defer closeCanc()
+		cobra.CheckErr(httpSrv.Shutdown(closeCtx))
+		log.Println("Server stopped")
 	},
 }
 

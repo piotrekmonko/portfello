@@ -25,10 +25,18 @@ type Auth0Provider struct {
 	config       config.Auth0
 }
 
+type Auth0Claims struct {
+	Scope string `json:"scope"`
+}
+
+func (c Auth0Claims) Validate(ctx context.Context) error {
+	return nil
+}
+
 var _ Provider = (*Auth0Provider)(nil)
 
 func NewAuth0Provider(ctx context.Context, c *config.Config) (*Auth0Provider, error) {
-	// initialize auth0 management API client
+	// Initialize auth0 management API client
 	client, err := management.New(
 		c.Auth.Domain,
 		management.WithClientCredentials(ctx, c.Auth.ClientID, c.Auth.ClientSecret),
@@ -38,7 +46,7 @@ func NewAuth0Provider(ctx context.Context, c *config.Config) (*Auth0Provider, er
 		return nil, fmt.Errorf("cannot configure management api client: %w", err)
 	}
 
-	// initialize JWT key validator
+	// Initialize JWT key validator
 	issuerURL, err := url.Parse(c.Auth.Domain + "/")
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse issuer domain: %w", err)
@@ -50,6 +58,12 @@ func NewAuth0Provider(ctx context.Context, c *config.Config) (*Auth0Provider, er
 		validator.RS256,
 		issuerURL.String(),
 		[]string{c.Auth.Audience},
+		validator.WithAllowedClockSkew(time.Minute),
+		validator.WithCustomClaims(
+			func() validator.CustomClaims {
+				return &Auth0Claims{}
+			},
+		),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create JWT validator: %w", err)
@@ -62,6 +76,19 @@ func NewAuth0Provider(ctx context.Context, c *config.Config) (*Auth0Provider, er
 		client:       client,
 		config:       c.Auth,
 	}, nil
+}
+
+func (a *Auth0Provider) ValidateToken(ctx context.Context, token string) (string, error) {
+	validatedToken, err := a.jwtValidator.ValidateToken(ctx, token)
+	if err != nil {
+		return "", err
+	}
+
+	userID := validatedToken.(validator.ValidatedClaims).RegisteredClaims.Subject
+	// TODO: Validate custom claims, needs configuration on Auth0 end.
+	// claims := validatedToken.(validator.ValidatedClaims).CustomClaims
+
+	return userID, nil
 }
 
 func (a *Auth0Provider) GetUserByEmail(ctx context.Context, email string) (*User, error) {
