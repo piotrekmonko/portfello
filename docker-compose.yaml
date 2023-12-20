@@ -5,7 +5,7 @@ services:
     image: bitnami/postgresql:latest
     restart: always
     ports:
-      - "5432:5432"
+      - "15432:5432"
     environment:
       - POSTGRESQL_USER=user
       - POSTGRESQL_PASSWORD=pass
@@ -20,15 +20,25 @@ services:
   redis:
     image: "bitnami/redis:latest"
     ports:
-      - "6379:6379"
+      - "16379:6379"
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
+    healthcheck:
+      test: [ "CMD-SHELL", "redis-cli ping | grep PONG" ]
+      interval: 1s
+      timeout: 3s
+      retries: 5
   nats:
     image: "nats:alpine"
     ports:
-      - "4222:4222"
-      - "6222:6222"
-      - "8222:8222"
+      - "14222:4222"
+      - "16222:6222"
+      - "18222:8222"
+    healthcheck:
+      test: echo $$(wget --server-response http://nats:8222/varz 2>&1 | grep  '200 OK') | grep '200'  || exit 1
+      interval: 20s
+      timeout: 5s
+      retries: 5
 
 volumes:
   db:
