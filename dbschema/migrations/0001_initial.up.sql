@@ -1,3 +1,16 @@
+create table local_user
+(
+    email               varchar(256)            not null
+        primary key,
+    display_name        text                    not null,
+    roles               text                    not null,
+    pwdHash             text                    not null,
+    created_at          timestamp default now() not null
+);
+
+comment on table local_user is 'Holds user data for auth.LocalProvider. Development use only.';
+
+
 create table history
 (
     id           varchar(512)            not null

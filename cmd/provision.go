@@ -29,8 +29,8 @@ import (
 	"github.com/piotrekmonko/portfello/pkg/auth"
 	"github.com/piotrekmonko/portfello/pkg/config"
 	"github.com/piotrekmonko/portfello/pkg/dao"
+	"github.com/piotrekmonko/portfello/pkg/logz"
 	"github.com/spf13/cobra"
-	"log"
 	"time"
 )
 
@@ -42,16 +42,17 @@ var provisionCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := cmd.Context()
 		conf := config.New()
-		authProvider, err := auth.NewAuth0Provider(ctx, conf)
+		log := logz.NewLogger(&conf.Logging)
+		db, dbq, err := dao.NewDAO(ctx, log, conf.DatabaseDSN)
 		if err != nil {
-			log.Fatal(err)
-		}
-		authService := auth.New(authProvider)
-		db, dbq, err := dao.NewDAO(ctx, conf.DatabaseDSN)
-		if err != nil {
-			log.Fatal(err)
+			return
 		}
 		defer db.Close()
+		authProvider, err := auth.NewProvider(ctx, log, conf, dbq)
+		if err != nil {
+			return
+		}
+		authService := auth.New(authProvider)
 
 		if email, _ := cmd.Flags().GetString("user"); email != "" {
 			if err := provisionUser(cmd.Context(), authService, email); err != nil {

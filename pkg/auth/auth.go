@@ -17,14 +17,6 @@ type Service struct {
 	cUsers   *cache.Cache[*User]
 }
 
-type Provider interface {
-	GetUserByEmail(ctx context.Context, email string) (*User, error)
-	ListUsers(ctx context.Context) ([]*User, int, error)
-	CreateUser(ctx context.Context, email string, name string, roles Roles) (*User, error)
-	AssignRoles(ctx context.Context, email string, roles []RoleID) ([]RoleID, error)
-	ValidateToken(ctx context.Context, token string) (userID string, err error)
-}
-
 func New(p Provider) *Service {
 	gocacheClient := gocache.New(50*time.Minute, 100*time.Minute)
 	gocacheStore := gocache_store.NewGoCache(gocacheClient)

@@ -8,12 +8,12 @@ import (
 	"github.com/piotrekmonko/portfello/pkg/config"
 	"github.com/piotrekmonko/portfello/pkg/dao"
 	"github.com/piotrekmonko/portfello/pkg/graph"
-	"log"
+	"github.com/piotrekmonko/portfello/pkg/logz"
 	"net/http"
 	"time"
 )
 
-func NewServer(ctx context.Context, conf *config.Config, dbQuerier *dao.DAO, authService *auth.Service) *http.Server {
+func NewServer(ctx context.Context, log logz.Logger, conf *config.Config, dbQuerier *dao.DAO, authService *auth.Service) *http.Server {
 	graphResolver := &graph.Resolver{
 		Conf:        conf,
 		DbDAO:       dbQuerier,
@@ -35,10 +35,10 @@ func NewServer(ctx context.Context, conf *config.Config, dbQuerier *dao.DAO, aut
 
 	mux.Handle("/query", srv)
 	if conf.Graph.EnablePlayground {
-		log.Printf("connect to http://localhost:%s/ for GraphQL playground", conf.Graph.Port)
+		log.Infow(ctx, "connect to http://localhost:%s/ for GraphQL playground", conf.Graph.Port)
 		mux.Handle("/", playground.Handler("GraphQL playground", "/query"))
 	}
 
-	log.Printf("serving on http://localhost:%s/", conf.Graph.Port)
+	log.Infow(ctx, "serving on http://localhost:%s/", conf.Graph.Port)
 	return httpSrv
 }

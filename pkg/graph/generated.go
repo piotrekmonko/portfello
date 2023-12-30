@@ -60,6 +60,7 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
+		AdminCreate     func(childComplexity int, newAdmin model.NewUser) int
 		CreateWallet    func(childComplexity int, input model.CreateWalletInput) int
 		SelfCheck       func(childComplexity int) int
 		UserAssignRoles func(childComplexity int, email string, newRoles []auth.RoleID) int
@@ -102,6 +103,7 @@ type ExpenseResolver interface {
 type MutationResolver interface {
 	SelfCheck(ctx context.Context) (bool, error)
 	UserCreate(ctx context.Context, newUser model.NewUser) (*auth.User, error)
+	AdminCreate(ctx context.Context, newAdmin model.NewUser) (*auth.User, error)
 	UserAssignRoles(ctx context.Context, email string, newRoles []auth.RoleID) ([]auth.RoleID, error)
 	CreateWallet(ctx context.Context, input model.CreateWalletInput) ([]*dao.Wallet, error)
 }
@@ -169,6 +171,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Expense.WalletID(childComplexity), true
+
+	case "Mutation.adminCreate":
+		if e.complexity.Mutation.AdminCreate == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_adminCreate_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.AdminCreate(childComplexity, args["newAdmin"].(model.NewUser)), true
 
 	case "Mutation.createWallet":
 		if e.complexity.Mutation.CreateWallet == nil {
@@ -503,11 +517,11 @@ extend type Query {
 input NewUser {
     email: String!
     displayName: String!
-    roles: [RoleId!]!
 }
 
 extend type Mutation {
     userCreate(newUser: NewUser!): User! @hasRole(role: admin)
+    adminCreate(newAdmin: NewUser!): User! @hasRole(role: super)
     userAssignRoles(email: String!, newRoles: [RoleId!]): [RoleId!] @hasRole(role: admin)
 }
 `, BuiltIn: false},
@@ -582,6 +596,21 @@ func (ec *executionContext) dir_hasRole_args(ctx context.Context, rawArgs map[st
 		}
 	}
 	args["role"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_adminCreate_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 model.NewUser
+	if tmp, ok := rawArgs["newAdmin"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("newAdmin"))
+		arg0, err = ec.unmarshalNNewUser2githubᚗcomᚋpiotrekmonkoᚋportfelloᚋpkgᚋgraphᚋmodelᚐNewUser(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["newAdmin"] = arg0
 	return args, nil
 }
 
@@ -1118,6 +1147,93 @@ func (ec *executionContext) fieldContext_Mutation_userCreate(ctx context.Context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_userCreate_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_adminCreate(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_adminCreate(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Mutation().AdminCreate(rctx, fc.Args["newAdmin"].(model.NewUser))
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			role, err := ec.unmarshalNRoleId2githubᚗcomᚋpiotrekmonkoᚋportfelloᚋpkgᚋauthᚐRoleID(ctx, "super")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.HasRole == nil {
+				return nil, errors.New("directive hasRole is not implemented")
+			}
+			return ec.directives.HasRole(ctx, nil, directive0, role)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*auth.User); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/piotrekmonko/portfello/pkg/auth.User`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*auth.User)
+	fc.Result = res
+	return ec.marshalNUser2ᚖgithubᚗcomᚋpiotrekmonkoᚋportfelloᚋpkgᚋauthᚐUser(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_adminCreate(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_User_id(ctx, field)
+			case "email":
+				return ec.fieldContext_User_email(ctx, field)
+			case "displayName":
+				return ec.fieldContext_User_displayName(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_adminCreate_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -4219,8 +4335,6 @@ func (ec *executionContext) unmarshalInputCreateWalletInput(ctx context.Context,
 		}
 		switch k {
 		case "currency":
-			var err error
-
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currency"))
 			data, err := ec.unmarshalNString2string(ctx, v)
 			if err != nil {
@@ -4240,7 +4354,7 @@ func (ec *executionContext) unmarshalInputNewUser(ctx context.Context, obj inter
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"email", "displayName", "roles"}
+	fieldsInOrder := [...]string{"email", "displayName"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -4248,8 +4362,6 @@ func (ec *executionContext) unmarshalInputNewUser(ctx context.Context, obj inter
 		}
 		switch k {
 		case "email":
-			var err error
-
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("email"))
 			data, err := ec.unmarshalNString2string(ctx, v)
 			if err != nil {
@@ -4257,23 +4369,12 @@ func (ec *executionContext) unmarshalInputNewUser(ctx context.Context, obj inter
 			}
 			it.Email = data
 		case "displayName":
-			var err error
-
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("displayName"))
 			data, err := ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.DisplayName = data
-		case "roles":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("roles"))
-			data, err := ec.unmarshalNRoleId2ᚕgithubᚗcomᚋpiotrekmonkoᚋportfelloᚋpkgᚋauthᚐRoleIDᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Roles = data
 		}
 	}
 
@@ -4418,6 +4519,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "userCreate":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_userCreate(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "adminCreate":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_adminCreate(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -5216,67 +5324,6 @@ func (ec *executionContext) marshalNRoleId2githubᚗcomᚋpiotrekmonkoᚋportfel
 		}
 	}
 	return res
-}
-
-func (ec *executionContext) unmarshalNRoleId2ᚕgithubᚗcomᚋpiotrekmonkoᚋportfelloᚋpkgᚋauthᚐRoleIDᚄ(ctx context.Context, v interface{}) ([]auth.RoleID, error) {
-	var vSlice []interface{}
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
-	var err error
-	res := make([]auth.RoleID, len(vSlice))
-	for i := range vSlice {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNRoleId2githubᚗcomᚋpiotrekmonkoᚋportfelloᚋpkgᚋauthᚐRoleID(ctx, vSlice[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-	return res, nil
-}
-
-func (ec *executionContext) marshalNRoleId2ᚕgithubᚗcomᚋpiotrekmonkoᚋportfelloᚋpkgᚋauthᚐRoleIDᚄ(ctx context.Context, sel ast.SelectionSet, v []auth.RoleID) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNRoleId2githubᚗcomᚋpiotrekmonkoᚋportfelloᚋpkgᚋauthᚐRoleID(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
 }
 
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v interface{}) (string, error) {

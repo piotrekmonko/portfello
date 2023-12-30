@@ -21,10 +21,15 @@ type CreateWalletInput struct {
 	Currency string `json:"currency"`
 }
 
+type Mutation struct {
+}
+
 type NewUser struct {
-	Email       string        `json:"email"`
-	DisplayName string        `json:"displayName"`
-	Roles       []auth.RoleID `json:"roles"`
+	Email       string `json:"email"`
+	DisplayName string `json:"displayName"`
+}
+
+type Query struct {
 }
 
 type Role struct {

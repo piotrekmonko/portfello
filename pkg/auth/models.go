@@ -3,6 +3,7 @@ package auth
 import (
 	"crypto"
 	"github.com/go-acme/lego/v4/registration"
+	"strings"
 	"time"
 )
 
@@ -10,6 +11,10 @@ type RoleID string
 
 func (i RoleID) StrPtr() *string {
 	return (*string)(&i)
+}
+
+func (i RoleID) String() string {
+	return string(i)
 }
 
 const (
@@ -32,6 +37,23 @@ func (r Roles) Has(role RoleID) bool {
 	}
 
 	return false
+}
+
+func (r Roles) ToString() string {
+	parts := make([]string, len(r))
+	for i := range r {
+		parts[i] = string(r[i])
+	}
+	return strings.Join(parts, ";")
+}
+
+func RolesFromString(r string) Roles {
+	parts := strings.Split(r, ";")
+	roleIDs := make(Roles, 0, len(parts))
+	for _, roleID := range roleIDs {
+		roleIDs = append(roleIDs, RoleID(roleID))
+	}
+	return roleIDs
 }
 
 type User struct {

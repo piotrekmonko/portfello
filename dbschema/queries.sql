@@ -24,3 +24,15 @@ SELECT * FROM expense WHERE wallet_id = $1 AND wallet_id IN (
     SELECT id FROM wallet WHERE user_id = $2
 ) 
 ORDER BY id;
+
+-- name: LocalUserInsert :exec
+INSERT INTO local_user (email, display_name, roles, created_at) VALUES ($1, $2, $3, $4);
+
+-- name: LocalUserUpdate :exec
+UPDATE local_user SET roles = $1 WHERE email = $2;
+
+-- name: LocalUserGetByEmail :one
+SELECT * FROM local_user WHERE email = $1;
+
+-- name: LocalUserList :many
+SELECT * FROM local_user ORDER BY email;

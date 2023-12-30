@@ -23,7 +23,7 @@ How it works?
 
 Portfello Server can be either self-hosted - to maximize your security, or used as a service @ www.portfel.lo
 
-After setting up self-hosted server/signing up at www.portel.lo, you are able to create and share as many Wallets 
+After setting up self-hosted server/signing up at www.portfel.lo, you are able to create and share as many Wallets 
 as you wish.  Each Wallet can represent any of available sync sources, either bank accounts, prepaid cards (supported 
 ones only) or prepaid phones. To set up synchronisation of your Wallet with Banking Provider you have to provide an 
 API key for accessing that provider, and an encryption key to securely store your API key. 
@@ -177,7 +177,8 @@ Next steps
 ==========
 
 After logging in test out a Wallet by using a Banking Provider's sandbox such as this one: 
-[MBank](https://developer.api.mbank.pl/documentation/sandbox-v2#section/How-to-test-requests-for-AIS). 
+[MBank](https://developer.api.mbank.pl/documentation/sandbox-v2#section/How-to-test-requests-for-AIS), 
+or this one: [Alior](https://developer.aliorbank.pl/openapipl/sb/).
 Generate a key and configure your first Wallet using it, then observe how the data changes in UI, all without
 using your real account.
 

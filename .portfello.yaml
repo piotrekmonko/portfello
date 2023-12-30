@@ -1,9 +1,13 @@
-database_dsn: "postgres://user:pass@localhost:5432/portfello?sslmode=disable"
+database_dsn: "postgres://user:pass@localhost:15432/portfello?sslmode=disable"
+logging:
+  format: "dev"
+  level: "debug"
 graphql:
   host: "http://localhost"
   port: "8080"
   enable_playground: true
 auth:
+  provider: "local"
   domain: "YOUR_DOMAIN.auth0.com"
   client_id: "YOUR_CLIENT_ID"
   client_secret: "YOUR_CLIENT_SECRET"

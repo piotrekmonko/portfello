@@ -23,6 +23,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/piotrekmonko/portfello/pkg/logz"
 	"go.uber.org/zap"
 	"os"
 
@@ -43,15 +44,20 @@ var rootCmd = &cobra.Command{
 	Short:   "Backend services for PortfelloApp",
 	Long:    `PortfelloApp is an opensource project for managing your household budget.`,
 	Version: "v1.0.0-dev",
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) { },
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		lvl, err := cmd.Flags().GetString("level")
+		if err != nil {
+			return fmt.Errorf("cannot read log level: %w", err)
+		}
+		return logz.ParseFlag(lvl)
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	rootCmd.Version = fmt.Sprintf("%s-%s", baseVersion, buildNumber)
+	logz.SetVer(rootCmd.Version)
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
@@ -80,7 +86,7 @@ func initConfig() {
 		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)
 		if err := viper.ReadInConfig(); err != nil {
-			cobra.CheckErr(fmt.Errorf("fatal error config file @ %s: %w \n", cfgFile, err))
+			cobra.CheckErr(fmt.Errorf("fatal error config file @ %s: %w", cfgFile, err))
 		}
 	}
 

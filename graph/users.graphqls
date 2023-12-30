@@ -14,10 +14,10 @@ extend type Query {
 input NewUser {
     email: String!
     displayName: String!
-    roles: [RoleId!]!
 }
 
 extend type Mutation {
     userCreate(newUser: NewUser!): User! @hasRole(role: admin)
+    adminCreate(newAdmin: NewUser!): User! @hasRole(role: super)
     userAssignRoles(email: String!, newRoles: [RoleId!]): [RoleId!] @hasRole(role: admin)
 }
