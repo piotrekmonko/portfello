@@ -23,12 +23,12 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/piotrekmonko/portfello/pkg/conf"
 	"github.com/piotrekmonko/portfello/pkg/logz"
 	"go.uber.org/zap"
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 const baseVersion = "v1.0.0"
@@ -82,30 +82,5 @@ func init() {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	if cfgFile != "" {
-		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
-		if err := viper.ReadInConfig(); err != nil {
-			cobra.CheckErr(fmt.Errorf("fatal error config file @ %s: %w", cfgFile, err))
-		}
-	}
-
-	// Find home directory.
-	home, err := os.UserHomeDir()
-	cobra.CheckErr(err)
-
-	// Search config in home directory with name ".portfello" (without extension).
-	viper.AddConfigPath(home)
-	viper.AddConfigPath(".")
-	viper.SetConfigType("yaml")
-
-	viper.AutomaticEnv() // read in environment variables that match
-
-	// Loop through found config files until all are parsed
-	for _, configFile := range []string{".portfello", ".portfello-local"} {
-		viper.SetConfigName(configFile)
-		if err := viper.MergeInConfig(); err == nil {
-			_, _ = fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
-		}
-	}
+	cobra.CheckErr(conf.InitConfig(cfgFile))
 }

@@ -2,9 +2,7 @@ package dao
 
 import "time"
 
-func (e *Expense) IsOperation() {
-	return
-}
+func (e *Expense) IsOperation() {}
 
 func (e *Expense) GetID() string {
 	return e.ID

@@ -1,10 +1,12 @@
-package config
+package conf
 
 import (
 	"fmt"
 	"github.com/mitchellh/mapstructure"
+	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"log"
+	"os"
 )
 
 type Config struct {
@@ -22,6 +24,7 @@ type GraphQL struct {
 const (
 	AuthProviderLocal = "local"
 	AuthProviderAuth0 = "auth0"
+	AuthProviderMock  = "mock"
 )
 
 type Auth0 struct {
@@ -56,6 +59,48 @@ func (c *Config) Validate() error {
 	}
 	if c.Auth.Provider != AuthProviderAuth0 && c.Auth.Provider != AuthProviderLocal {
 		return fmt.Errorf("auth.provider must be set to either '%s' or '%s'", AuthProviderLocal, AuthProviderAuth0)
+	}
+
+	return nil
+}
+
+// NewTestConfig returns configuration suitable for testing.
+func NewTestConfig() *Config {
+	return &Config{
+		DatabaseDSN: "",
+		Graph:       GraphQL{},
+		Auth:        Auth0{},
+		Logging:     Logging{},
+	}
+}
+
+// InitConfig reads in config file and ENV variables if set. Should be called once at app startup.
+func InitConfig(cfgFilePath string) error {
+	if cfgFilePath != "" {
+		// Use config file from the flag.
+		viper.SetConfigFile(cfgFilePath)
+		if err := viper.ReadInConfig(); err != nil {
+			return fmt.Errorf("fatal error config file @ %s: %w", cfgFilePath, err)
+		}
+	}
+
+	// Find home directory.
+	home, err := os.UserHomeDir()
+	cobra.CheckErr(err)
+
+	// Search config in home directory with name ".portfello" (without extension).
+	viper.AddConfigPath(home)
+	viper.AddConfigPath(".")
+	viper.SetConfigType("yaml")
+
+	viper.AutomaticEnv() // read in environment variables that match
+
+	// Loop through found config files until all are parsed
+	for _, configFile := range []string{".portfello", ".portfello-local"} {
+		viper.SetConfigName(configFile)
+		if err := viper.MergeInConfig(); err == nil {
+			_, _ = fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
+		}
 	}
 
 	return nil

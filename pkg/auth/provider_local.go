@@ -71,7 +71,7 @@ func (p *LocalProvider) CreateUser(ctx context.Context, email string, name strin
 		return nil, p.log.Errorw(ctx, err, "cannot retrieve user with email='%s'", email)
 	}
 
-	return userFromLocal(usr), tx.Commit()
+	return userFromLocal(usr), tx.Commit(ctx)
 }
 
 func (p *LocalProvider) AssignRoles(ctx context.Context, email string, roles []RoleID) ([]RoleID, error) {
@@ -91,7 +91,7 @@ func (p *LocalProvider) AssignRoles(ctx context.Context, email string, roles []R
 		return nil, p.log.Errorw(ctx, err, "cannot retrieve user with email='%s'", email)
 	}
 
-	return RolesFromString(usr.Roles), tx.Commit()
+	return RolesFromString(usr.Roles), tx.Commit(ctx)
 }
 
 func (p *LocalProvider) ValidateToken(ctx context.Context, token string) (userID string, err error) {

@@ -7,7 +7,7 @@ import (
 	"github.com/auth0/go-jwt-middleware/v2/jwks"
 	"github.com/auth0/go-jwt-middleware/v2/validator"
 	"github.com/google/uuid"
-	"github.com/piotrekmonko/portfello/pkg/config"
+	"github.com/piotrekmonko/portfello/pkg/conf"
 	"github.com/piotrekmonko/portfello/pkg/logz"
 	"net/http"
 	"net/url"
@@ -26,15 +26,15 @@ func (c Auth0Claims) Validate(_ context.Context) error {
 
 type Auth0Provider struct {
 	log          logz.Logger
-	client       *management.Management
+	manager      *management.Management
 	jwtValidator *validator.Validator
 	jwtProvider  *jwks.CachingProvider
-	config       *config.Auth0
+	config       *conf.Auth0
 }
 
 var _ Provider = (*Auth0Provider)(nil)
 
-func NewAuth0Provider(ctx context.Context, log logz.Logger, conf *config.Auth0) (*Auth0Provider, error) {
+func NewAuth0Provider(ctx context.Context, log logz.Logger, conf *conf.Auth0) (*Auth0Provider, error) {
 	// Initialize auth0 management API client
 	client, err := management.New(
 		conf.Domain,
@@ -72,7 +72,7 @@ func NewAuth0Provider(ctx context.Context, log logz.Logger, conf *config.Auth0) 
 		log:          log.Named("prov.auth0"),
 		jwtProvider:  jwtProvider,
 		jwtValidator: jwtValidator,
-		client:       client,
+		manager:      client,
 		config:       conf,
 	}, nil
 }
@@ -91,13 +91,13 @@ func (a *Auth0Provider) ValidateToken(ctx context.Context, token string) (string
 }
 
 func (a *Auth0Provider) GetUserByEmail(ctx context.Context, email string) (*User, error) {
-	matchingUsers, err := a.client.User.ListByEmail(ctx, email)
+	matchingUsers, err := a.manager.User.ListByEmail(ctx, email)
 	if err != nil || len(matchingUsers) == 0 {
 		return nil, a.log.Errorw(ctx, err, "cannot find user by email='%s'", email)
 	}
 
 	auth0User := matchingUsers[0]
-	roles, err := a.client.User.Roles(ctx, auth0User.GetID())
+	roles, err := a.manager.User.Roles(ctx, auth0User.GetID())
 	if err != nil {
 		return nil, a.log.Errorw(ctx, err, "cannot read user roles for email='%s'", email)
 	}
@@ -118,7 +118,7 @@ func (a *Auth0Provider) GetUserByEmail(ctx context.Context, email string) (*User
 
 func (a *Auth0Provider) ListUsers(ctx context.Context) ([]*User, int, error) {
 	var wg sync.WaitGroup
-	uList, err := a.client.User.List(ctx, management.IncludeTotals(true))
+	uList, err := a.manager.User.List(ctx, management.IncludeTotals(true))
 	if err != nil {
 		return nil, -1, a.log.Errorw(ctx, err, "cannot list users")
 	}
@@ -137,9 +137,10 @@ func (a *Auth0Provider) ListUsers(ctx context.Context) ([]*User, int, error) {
 		go func(userID string, index int) {
 			defer wg.Done()
 
-			roles, err := a.client.User.Roles(ctx, userID)
+			roles, err := a.manager.User.Roles(ctx, userID)
 			if err != nil {
 				_ = a.log.Errorw(ctx, err, "cannot read user roles for userID='%s'", userID)
+				return
 			}
 
 			roleSlice := make(Roles, len(roles.Roles))
@@ -157,7 +158,7 @@ func (a *Auth0Provider) ListUsers(ctx context.Context) ([]*User, int, error) {
 }
 
 func (a *Auth0Provider) CreateUser(ctx context.Context, email string, name string, roles Roles) (*User, error) {
-	conn, err := a.client.Connection.Read(ctx, a.config.ConnectionID)
+	conn, err := a.manager.Connection.Read(ctx, a.config.ConnectionID)
 	if err != nil {
 		return nil, a.log.Errorw(ctx, err, "cannot fetch Auth0 db connection")
 	}
@@ -169,7 +170,7 @@ func (a *Auth0Provider) CreateUser(ctx context.Context, email string, name strin
 		Name:       &name,
 		Password:   &initialPassword,
 	}
-	err = a.client.User.Create(ctx, userReq)
+	err = a.manager.User.Create(ctx, userReq)
 	if err != nil {
 		if mngmtErr, isMngmtErr := err.(management.Error); isMngmtErr && mngmtErr.Status() == http.StatusConflict {
 			a.log.Warnw(ctx, "user(%s) already exists in Auth0", email)
@@ -183,7 +184,7 @@ func (a *Auth0Provider) CreateUser(ctx context.Context, email string, name strin
 		}
 	}
 
-	existingRoles, err := a.client.Role.List(ctx)
+	existingRoles, err := a.manager.Role.List(ctx)
 	if err != nil {
 		return nil, a.log.Errorw(ctx, err, "cannot list roles")
 	}
@@ -202,7 +203,7 @@ func (a *Auth0Provider) CreateUser(ctx context.Context, email string, name strin
 		}
 	}
 
-	if err = a.client.User.AssignRoles(ctx, userReq.GetID(), auth0Roles); err != nil {
+	if err = a.manager.User.AssignRoles(ctx, userReq.GetID(), auth0Roles); err != nil {
 		return nil, a.log.Errorw(ctx, err, "cannot assign roles to user(%s)", email)
 	}
 
@@ -214,7 +215,7 @@ func (a *Auth0Provider) AssignRoles(ctx context.Context, auth0UserID string, rol
 	for i, role := range roles {
 		auth0Roles[i] = &management.Role{Name: role.StrPtr()}
 	}
-	if err := a.client.User.AssignRoles(ctx, auth0UserID, auth0Roles); err != nil {
+	if err := a.manager.User.AssignRoles(ctx, auth0UserID, auth0Roles); err != nil {
 		return nil, a.log.Errorw(ctx, err, "cannot assign roles to user(%s)", auth0UserID)
 	}
 

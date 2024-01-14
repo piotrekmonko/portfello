@@ -3,7 +3,7 @@ package auth
 import (
 	"context"
 	"fmt"
-	"github.com/piotrekmonko/portfello/pkg/config"
+	"github.com/piotrekmonko/portfello/pkg/conf"
 	"github.com/piotrekmonko/portfello/pkg/dao"
 	"github.com/piotrekmonko/portfello/pkg/logz"
 )
@@ -17,13 +17,15 @@ type Provider interface {
 }
 
 // NewProvider builds correct provider based on config.
-func NewProvider(ctx context.Context, log logz.Logger, conf *config.Config, dao *dao.DAO) (Provider, error) {
-	switch conf.Auth.Provider {
-	case config.AuthProviderLocal:
+func NewProvider(ctx context.Context, log logz.Logger, c *conf.Config, dao *dao.DAO) (Provider, error) {
+	switch c.Auth.Provider {
+	case conf.AuthProviderLocal:
 		return NewLocalProvider(log.Named("auth"), dao), nil
-	case config.AuthProviderAuth0:
-		return NewAuth0Provider(ctx, log.Named("auth"), &conf.Auth)
+	case conf.AuthProviderAuth0:
+		return NewAuth0Provider(ctx, log.Named("auth"), &c.Auth)
+	case conf.AuthProviderMock:
+		return NewMockProvider()
 	default:
-		return nil, fmt.Errorf("unsupported auth provider configuration valu: %s", conf.Auth.Provider)
+		return nil, fmt.Errorf("unsupported auth provider configuration valu: %s", c.Auth.Provider)
 	}
 }

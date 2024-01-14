@@ -25,7 +25,7 @@ import (
 	"errors"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/piotrekmonko/portfello/dbschema"
-	"github.com/piotrekmonko/portfello/pkg/config"
+	"github.com/piotrekmonko/portfello/pkg/conf"
 	"github.com/spf13/cobra"
 	"log"
 )
@@ -48,7 +48,7 @@ var upCmd = &cobra.Command{
 	Use:   "up",
 	Short: "Apply missing migrations",
 	Run: func(cmd *cobra.Command, args []string) {
-		conf := config.New()
+		conf := conf.New()
 		migrator, err := dbschema.NewMigrator(conf.DatabaseDSN)
 		if err != nil {
 			logFatalMigrate(err)
@@ -66,7 +66,7 @@ var downCmd = &cobra.Command{
 	Use:   "down",
 	Short: "Revert one last migration",
 	Run: func(cmd *cobra.Command, args []string) {
-		conf := config.New()
+		conf := conf.New()
 		migrator, err := dbschema.NewMigrator(conf.DatabaseDSN)
 		if err != nil {
 			logFatalMigrate(err)
@@ -84,7 +84,7 @@ var dropCmd = &cobra.Command{
 	Use:   "drop",
 	Short: "Drop database. WARNING: This will delete all data!",
 	Run: func(cmd *cobra.Command, args []string) {
-		conf := config.New()
+		conf := conf.New()
 		migrator, err := dbschema.NewMigrator(conf.DatabaseDSN)
 		if err != nil {
 			logFatalMigrate(err)
