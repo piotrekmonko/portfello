@@ -25,7 +25,7 @@ import (
 	"context"
 	"errors"
 	"github.com/piotrekmonko/portfello/pkg/auth"
-	"github.com/piotrekmonko/portfello/pkg/config"
+	"github.com/piotrekmonko/portfello/pkg/conf"
 	"github.com/piotrekmonko/portfello/pkg/dao"
 	"github.com/piotrekmonko/portfello/pkg/logz"
 	"github.com/piotrekmonko/portfello/pkg/server"
@@ -41,20 +41,20 @@ import (
 var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Start GraphQL server",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
-		conf := config.New()
+		conf := conf.New()
 		log := logz.NewLogger(&conf.Logging)
 
 		db, dbQuerier, err := dao.NewDAO(ctx, log, conf.DatabaseDSN)
 		if err != nil {
-			return
+			return err
 		}
 		defer db.Close()
 
 		authProvider, err := auth.NewProvider(ctx, log, conf, dbQuerier)
 		if err != nil {
-			return
+			return err
 		}
 		authService := auth.New(authProvider)
 
@@ -73,6 +73,8 @@ var serveCmd = &cobra.Command{
 		defer closeCanc()
 		cobra.CheckErr(httpSrv.Shutdown(closeCtx))
 		log.Infow(ctx, "Server stopped")
+
+		return nil
 	},
 }
 

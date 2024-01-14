@@ -24,7 +24,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/piotrekmonko/portfello/pkg/config"
+	"github.com/piotrekmonko/portfello/pkg/conf"
 	"github.com/spf13/cobra"
 )
 
@@ -34,7 +34,7 @@ var configCmd = &cobra.Command{
 	Aliases: []string{"conf"},
 	Short:   "Config verifies configuration is complete",
 	Run: func(cmd *cobra.Command, args []string) {
-		conf := config.New()
+		conf := conf.New()
 		err := conf.Validate()
 		cobra.CheckErr(err)
 

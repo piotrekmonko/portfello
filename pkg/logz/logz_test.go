@@ -3,39 +3,11 @@ package logz
 import (
 	"context"
 	"fmt"
-	"github.com/piotrekmonko/portfello/pkg/config"
+	"github.com/piotrekmonko/portfello/pkg/conf"
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap/zaptest"
 	"reflect"
-	"strings"
 	"testing"
 )
-
-type TestLogger struct {
-	testing.TB
-	*Log
-	Messages []string
-}
-
-func NewTestLogger(tb testing.TB) *TestLogger {
-	tl := &TestLogger{
-		TB:       tb,
-		Messages: make([]string, 0),
-	}
-	tl.Log = &Log{SugaredLogger: zaptest.NewLogger(tl).Sugar()}
-	return tl
-}
-
-func (t *TestLogger) Logf(format string, args ...interface{}) {
-	m := fmt.Sprintf(format, args...)
-	m = m[strings.IndexByte(m, '\t')+1:] // strip the timestamp and its following tab
-	t.Messages = append(t.Messages, m)
-	t.TB.Log(m)
-}
-
-func (t *TestLogger) AssertMessages(msgs ...string) {
-	assert.Equal(t.TB, msgs, t.Messages, "logged messages did not match")
-}
 
 func TestFromCtx(t *testing.T) {
 	tests := []struct {
@@ -90,7 +62,7 @@ func TestLog_Levels(t *testing.T) {
 }
 
 func TestNewLogger(t *testing.T) {
-	logger := NewLogger(&config.Logging{
+	logger := NewLogger(&conf.Logging{
 		Level:  "debug",
 		Format: "dev",
 	})

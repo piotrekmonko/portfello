@@ -49,7 +49,7 @@ func (r *mutationResolver) CreateWallet(ctx context.Context, input model.CreateW
 		return nil, fmt.Errorf("cannot list user wallets: %w", err)
 	}
 
-	return wallets, q.Commit()
+	return wallets, q.Commit(ctx)
 }
 
 // ListWallets is the resolver for the listWallets field.

@@ -11,6 +11,8 @@ import (
 type DAO struct {
 	log logz.Logger
 	db  DBTX
+	// txDepth reports how many times a transaction was started and closed
+	txDepth int
 	*Queries
 }
 
@@ -39,31 +41,33 @@ type beginner interface {
 }
 
 func (q *DAO) BeginTx(ctx context.Context) (*DAO, func() error, error) {
-	txLog := q.log.With("tx", "true")
 	tx, err := q.db.(beginner).BeginTx(ctx, nil)
 	if err != nil {
 		return nil, func() error { return nil }, q.log.Errorw(ctx, err, "error while starting transaction")
 	}
 
+	txLog := q.log.With("tx", q.txDepth+1)
 	return &DAO{
 			log:     txLog,
 			db:      q.db,
+			txDepth: q.txDepth + 1,
 			Queries: q.WithTx(tx),
 		}, func() error {
 			if errors.Is(tx.Rollback(), sql.ErrTxDone) {
 				// This callback can be called as deferred, regardless if tx was committed or not, thus we should
 				// silence sql.ErrTxDone error.
 				q.Queries.db = q.db
+				q.log.Debugw(ctx, "transaction committed")
 				return nil
 			}
-			return txLog.Errorw(ctx, err, "error while rolling back transaction")
+			return q.log.Errorw(ctx, err, "error while rolling back transaction")
 		}, nil
 }
 
-func (q *DAO) Commit() error {
+func (q *DAO) Commit(ctx context.Context) error {
 	err := q.Queries.db.(*sql.Tx).Commit()
 	q.Queries.db = q.db
-	return q.log.Errorw(context.Background(), err, "error while commiting transaction")
+	return q.log.Errorw(ctx, err, "error while committing transaction")
 }
 
 func NilStr(s string) sql.NullString {

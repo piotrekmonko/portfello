@@ -27,7 +27,7 @@ import (
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/lithammer/shortuuid/v4"
 	"github.com/piotrekmonko/portfello/pkg/auth"
-	"github.com/piotrekmonko/portfello/pkg/config"
+	"github.com/piotrekmonko/portfello/pkg/conf"
 	"github.com/piotrekmonko/portfello/pkg/dao"
 	"github.com/piotrekmonko/portfello/pkg/logz"
 	"github.com/spf13/cobra"
@@ -41,7 +41,7 @@ var provisionCmd = &cobra.Command{
 	Short:   "Add objects to systems",
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := cmd.Context()
-		conf := config.New()
+		conf := conf.New()
 		log := logz.NewLogger(&conf.Logging)
 		db, dbq, err := dao.NewDAO(ctx, log, conf.DatabaseDSN)
 		if err != nil {
@@ -119,5 +119,5 @@ func provisionTestData(ctx context.Context, dbq *dao.DAO) error {
 		}
 	}
 
-	return q.Commit()
+	return q.Commit(ctx)
 }

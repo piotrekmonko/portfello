@@ -3,9 +3,13 @@ package logz
 import (
 	"context"
 	"fmt"
-	"github.com/piotrekmonko/portfello/pkg/config"
+	"github.com/piotrekmonko/portfello/pkg/conf"
+	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"go.uber.org/zap/zaptest"
+	"strings"
+	"testing"
 )
 
 type loggerKeyValuePairsCtx struct{}
@@ -21,11 +25,12 @@ type Logger interface {
 	With(args ...interface{}) Logger
 	Debugw(ctx context.Context, msg string, keysAndValues ...interface{})
 	Infow(ctx context.Context, msg string, keysAndValues ...interface{})
+	Infof(ctx context.Context, msg string, args ...interface{})
 	Warnw(ctx context.Context, msg string, keysAndValues ...interface{})
 	Errorw(ctx context.Context, err error, msg string, keysAndValues ...interface{}) error
 }
 
-func NewLogger(c *config.Logging) Logger {
+func NewLogger(c *conf.Logging) Logger {
 	var cfg zap.Config
 
 	if c.Format == "dev" {
@@ -67,6 +72,10 @@ func (l *Log) Debugw(ctx context.Context, msg string, keysAndValues ...interface
 
 func (l *Log) Infow(ctx context.Context, msg string, keysAndValues ...interface{}) {
 	l.SugaredLogger.With(FromCtx(ctx)...).Infow(msg, keysAndValues...)
+}
+
+func (l *Log) Infof(ctx context.Context, msg string, args ...interface{}) {
+	l.SugaredLogger.With(FromCtx(ctx)...).Infof(msg, args...)
 }
 
 func (l *Log) Warnw(ctx context.Context, msg string, keysAndValues ...interface{}) {
@@ -120,4 +129,31 @@ func ParseFlag(level string) error {
 // SetVer sets input as the value for "v" field (version) in log entries.
 func SetVer(v string) {
 	version = v
+}
+
+// TestLogger records output to internal Messages slice for later inspection. Use in your tests.
+type TestLogger struct {
+	testing.TB
+	*Log
+	Messages []string
+}
+
+func NewTestLogger(tb testing.TB) *TestLogger {
+	tl := &TestLogger{
+		TB:       tb,
+		Messages: make([]string, 0),
+	}
+	tl.Log = &Log{SugaredLogger: zaptest.NewLogger(tl).Sugar()}
+	return tl
+}
+
+func (t *TestLogger) Logf(format string, args ...interface{}) {
+	m := fmt.Sprintf(format, args...)
+	m = m[strings.IndexByte(m, '\t')+1:] // strip the timestamp and its following tab
+	t.Messages = append(t.Messages, m)
+	t.TB.Log(m)
+}
+
+func (t *TestLogger) AssertMessages(msgs ...string) {
+	assert.Equal(t.TB, msgs, t.Messages, "logged messages did not match")
 }

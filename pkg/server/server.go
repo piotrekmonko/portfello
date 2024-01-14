@@ -5,7 +5,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/piotrekmonko/portfello/pkg/auth"
-	"github.com/piotrekmonko/portfello/pkg/config"
+	"github.com/piotrekmonko/portfello/pkg/conf"
 	"github.com/piotrekmonko/portfello/pkg/dao"
 	"github.com/piotrekmonko/portfello/pkg/graph"
 	"github.com/piotrekmonko/portfello/pkg/logz"
@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-func NewServer(ctx context.Context, log logz.Logger, conf *config.Config, dbQuerier *dao.DAO, authService *auth.Service) *http.Server {
+func NewServer(ctx context.Context, log logz.Logger, conf *conf.Config, dbQuerier *dao.DAO, authService *auth.Service) *http.Server {
 	graphResolver := &graph.Resolver{
 		Conf:        conf,
 		DbDAO:       dbQuerier,
@@ -35,10 +35,10 @@ func NewServer(ctx context.Context, log logz.Logger, conf *config.Config, dbQuer
 
 	mux.Handle("/query", srv)
 	if conf.Graph.EnablePlayground {
-		log.Infow(ctx, "connect to http://localhost:%s/ for GraphQL playground", conf.Graph.Port)
+		log.Infof(ctx, "connect to http://localhost:%s/ for GraphQL playground", conf.Graph.Port)
 		mux.Handle("/", playground.Handler("GraphQL playground", "/query"))
 	}
 
-	log.Infow(ctx, "serving on http://localhost:%s/", conf.Graph.Port)
+	log.Infof(ctx, "serving on http://localhost:%s/", conf.Graph.Port)
 	return httpSrv
 }
