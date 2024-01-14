@@ -53,7 +53,7 @@ func NewMockProvider() (*MockProvider, error) {
 
 func (m *MockProvider) GetUserByEmail(ctx context.Context, email string) (*User, error) {
 	for i := range m.Users {
-		if strings.ToLower(m.Users[i].GetEmail()) == strings.ToLower(email) {
+		if strings.EqualFold(m.Users[i].GetEmail(), email) {
 			return m.Users[i], nil
 		}
 	}
