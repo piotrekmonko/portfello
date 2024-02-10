@@ -1,4 +1,4 @@
-FROM golang:1.21.1-alpine AS base
+FROM golang:1.22.0-alpine AS base
 RUN apk add git
 WORKDIR /usr/src/portfello
 COPY go.mod .
@@ -16,7 +16,7 @@ WORKDIR /usr/src/portfello
 COPY . .
 RUN time go test ./... -v
 
-FROM golang:1.21.1-alpine AS binary
+FROM golang:1.22.0-alpine AS binary
 COPY --from=build /bin/portfello /bin/portfello
 EXPOSE 8080
 ENTRYPOINT ["/bin/portfello"]
