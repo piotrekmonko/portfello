@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/auth0/go-auth0/management"
 	"github.com/auth0/go-jwt-middleware/v2/jwks"
@@ -15,14 +16,6 @@ import (
 	"sync"
 	"time"
 )
-
-type Auth0Claims struct {
-	Scope string `json:"scope"`
-}
-
-func (c Auth0Claims) Validate(_ context.Context) error {
-	return nil
-}
 
 type Auth0Provider struct {
 	log          logz.Logger
@@ -60,7 +53,7 @@ func NewAuth0Provider(ctx context.Context, log logz.Logger, conf *conf.Auth0) (*
 		validator.WithAllowedClockSkew(time.Minute),
 		validator.WithCustomClaims(
 			func() validator.CustomClaims {
-				return &Auth0Claims{}
+				return &JwtClaims{}
 			},
 		),
 	)
@@ -172,7 +165,8 @@ func (a *Auth0Provider) CreateUser(ctx context.Context, email string, name strin
 	}
 	err = a.manager.User.Create(ctx, userReq)
 	if err != nil {
-		if mngmtErr, isMngmtErr := err.(management.Error); isMngmtErr && mngmtErr.Status() == http.StatusConflict {
+		var managementError management.Error
+		if errors.As(err, &managementError) && managementError.Status() == http.StatusConflict {
 			a.log.Warnw(ctx, "user(%s) already exists in Auth0", email)
 			existingUser, err := a.GetUserByEmail(ctx, email)
 			if err != nil {
@@ -220,4 +214,8 @@ func (a *Auth0Provider) AssignRoles(ctx context.Context, auth0UserID string, rol
 	}
 
 	return roles, nil
+}
+
+func (a *Auth0Provider) IssueToken(_ context.Context, _ string, _ Roles) (token string, err error) {
+	return "", fmt.Errorf("not supported in this provider")
 }

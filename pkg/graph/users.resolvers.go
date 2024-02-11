@@ -12,6 +12,21 @@ import (
 	"github.com/piotrekmonko/portfello/pkg/graph/model"
 )
 
+// UserSetPassword is the resolver for the userSetPassword field.
+func (r *mutationResolver) UserSetPassword(ctx context.Context, userID string, newPassword string) (*auth.User, error) {
+	user, err := r.AuthService.GetUser(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user: %w", err)
+	}
+
+	err = r.AuthService.SetPassword(ctx, user, newPassword)
+	if err != nil {
+		return nil, fmt.Errorf("cannot change password: %w", err)
+	}
+
+	return user, nil
+}
+
 // UserCreate is the resolver for the userCreate field.
 func (r *mutationResolver) UserCreate(ctx context.Context, newUser model.NewUser) (*auth.User, error) {
 	return r.AuthService.CreateUser(ctx, newUser.Email, newUser.DisplayName, auth.Roles{auth.RoleUser})
@@ -39,6 +54,30 @@ func (r *mutationResolver) UserAssignRoles(ctx context.Context, email string, ne
 	}
 
 	return r.AuthService.AssignRoles(ctx, email, newRoles)
+}
+
+// Login is the resolver for the login field.
+func (r *queryResolver) Login(ctx context.Context, email string, pass string) (*string, error) {
+	if email == "" || pass == "" {
+		return nil, fmt.Errorf("user email and passwords are required")
+	}
+
+	user, err := r.AuthService.GetUser(ctx, email)
+	if err != nil {
+		return nil, fmt.Errorf("cannot login: %w", err)
+	}
+
+	err = r.AuthService.CheckPassword(ctx, user, pass)
+	if err != nil {
+		return nil, err
+	}
+
+	token, err := r.AuthService.IssueToken(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+
+	return &token, nil
 }
 
 // GetUserRoles is the resolver for the getUserRoles field.

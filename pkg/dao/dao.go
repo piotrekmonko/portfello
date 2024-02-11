@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"github.com/piotrekmonko/portfello/pkg/conf"
 	"github.com/piotrekmonko/portfello/pkg/logz"
 	"time"
 )
@@ -16,8 +17,8 @@ type DAO struct {
 	*Queries
 }
 
-func NewDAO(ctx context.Context, log logz.Logger, dsn string) (*sql.DB, *DAO, error) {
-	db, err := sql.Open("postgres", dsn)
+func NewDAO(ctx context.Context, log *logz.Log, c *conf.Config) (*DAO, func(), error) {
+	db, err := sql.Open("postgres", c.DatabaseDSN)
 	if err != nil {
 		return nil, nil, log.Errorw(ctx, err, "cannot open database")
 	}
@@ -29,11 +30,17 @@ func NewDAO(ctx context.Context, log logz.Logger, dsn string) (*sql.DB, *DAO, er
 		return nil, nil, log.Errorw(ctx, err, "cannot ping database")
 	}
 
-	return db, &DAO{
-		log:     log.Named("dbdao"),
-		db:      db,
-		Queries: New(db),
-	}, nil
+	return &DAO{
+			log:     log.Named("dbdao"),
+			db:      db,
+			Queries: New(db),
+		}, func() {
+			_ = db.Close()
+		}, nil
+}
+
+func (q *DAO) DB() *sql.DB {
+	return q.db.(*sql.DB)
 }
 
 func (q *DAO) Ping(ctx context.Context) error {
@@ -44,10 +51,10 @@ type beginner interface {
 	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
 }
 
-func (q *DAO) BeginTx(ctx context.Context) (*DAO, func() error, error) {
+func (q *DAO) BeginTx(ctx context.Context) (*DAO, func(), error) {
 	tx, err := q.db.(beginner).BeginTx(ctx, nil)
 	if err != nil {
-		return nil, func() error { return nil }, q.log.Errorw(ctx, err, "error while starting transaction")
+		return nil, func() {}, q.log.Errorw(ctx, err, "error while starting transaction")
 	}
 
 	txLog := q.log.With("tx", q.txDepth+1)
@@ -56,15 +63,16 @@ func (q *DAO) BeginTx(ctx context.Context) (*DAO, func() error, error) {
 			db:      q.db,
 			txDepth: q.txDepth + 1,
 			Queries: q.WithTx(tx),
-		}, func() error {
-			if errors.Is(tx.Rollback(), sql.ErrTxDone) {
+		}, func() {
+			rollbackErr := tx.Rollback()
+			if errors.Is(rollbackErr, sql.ErrTxDone) {
 				// This callback can be called as deferred, regardless if tx was committed or not, thus we should
 				// silence sql.ErrTxDone error.
 				q.Queries.db = q.db
 				q.log.Debugw(ctx, "transaction committed")
-				return nil
+				return
 			}
-			return q.log.Errorw(ctx, err, "error while rolling back transaction")
+			_ = q.log.Errorw(ctx, rollbackErr, "error while rolling back transaction")
 		}, nil
 }
 

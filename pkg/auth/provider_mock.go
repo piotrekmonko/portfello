@@ -51,7 +51,7 @@ func NewMockProvider() (*MockProvider, error) {
 	}}, nil
 }
 
-func (m *MockProvider) GetUserByEmail(ctx context.Context, email string) (*User, error) {
+func (m *MockProvider) GetUserByEmail(_ context.Context, email string) (*User, error) {
 	for i := range m.Users {
 		if strings.EqualFold(m.Users[i].GetEmail(), email) {
 			return m.Users[i], nil
@@ -61,7 +61,7 @@ func (m *MockProvider) GetUserByEmail(ctx context.Context, email string) (*User,
 	return nil, ErrUserNotFound
 }
 
-func (m *MockProvider) ListUsers(ctx context.Context) ([]*User, int, error) {
+func (m *MockProvider) ListUsers(_ context.Context) ([]*User, int, error) {
 	return m.Users, len(m.Users), nil
 }
 
@@ -109,4 +109,8 @@ func (m *MockProvider) ValidateToken(ctx context.Context, token string) (userID 
 	}
 
 	return usr.ID, nil
+}
+
+func (m *MockProvider) IssueToken(_ context.Context, email string, _ Roles) (token string, err error) {
+	return fmt.Sprintf("mocktoken:%s", email), nil
 }

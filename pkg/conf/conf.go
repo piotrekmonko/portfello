@@ -11,6 +11,7 @@ import (
 
 type Config struct {
 	DatabaseDSN string  `yaml:"database_dsn"`
+	HostName    string  `yaml:"host_name"`
 	Graph       GraphQL `yaml:"graphql"`
 	Auth        Auth0   `yaml:"auth"`
 	Logging     Logging `yaml:"logging"`
@@ -54,11 +55,26 @@ func New() *Config {
 }
 
 func (c *Config) Validate() error {
+	if c.HostName == "" {
+		c.HostName = "portfello.app" // set explicit default
+	}
 	if c.DatabaseDSN == "" {
 		return fmt.Errorf("database_dsn is required")
 	}
-	if c.Auth.Provider != AuthProviderAuth0 && c.Auth.Provider != AuthProviderLocal {
-		return fmt.Errorf("auth.provider must be set to either '%s' or '%s'", AuthProviderLocal, AuthProviderAuth0)
+
+	switch c.Auth.Provider {
+	case AuthProviderAuth0:
+		if c.Auth.ClientID == "" {
+			return fmt.Errorf("auth0 is not configured")
+		}
+	case AuthProviderLocal:
+		if c.Auth.ClientSecret == "" {
+			return fmt.Errorf("local auth provider is not configured")
+		}
+	case AuthProviderMock:
+		return nil
+	default:
+		return fmt.Errorf("invalid auth provider: %s", c.Auth.Provider)
 	}
 
 	return nil

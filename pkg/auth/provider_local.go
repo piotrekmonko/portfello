@@ -1,23 +1,31 @@
 package auth
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha512"
+	"fmt"
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/piotrekmonko/portfello/pkg/conf"
 	"github.com/piotrekmonko/portfello/pkg/dao"
 	"github.com/piotrekmonko/portfello/pkg/logz"
+	"golang.org/x/crypto/openpgp/s2k"
 	"time"
 )
 
 type LocalProvider struct {
-	DbDAO *dao.DAO
-	log   logz.Logger
+	db   *dao.DAO
+	log  logz.Logger
+	conf *conf.Auth0
 }
 
 var _ Provider = (*LocalProvider)(nil)
 
-func NewLocalProvider(log logz.Logger, dao *dao.DAO) *LocalProvider {
+func NewLocalProvider(log logz.Logger, dao *dao.DAO, conf *conf.Auth0) *LocalProvider {
 	return &LocalProvider{
-		DbDAO: dao,
-		log:   log.Named("prov.local"),
+		db:   dao,
+		log:  log.Named("prov.local"),
+		conf: conf,
 	}
 }
 
@@ -28,11 +36,12 @@ func userFromLocal(u *dao.LocalUser) *User {
 		Email:       u.Email,
 		Roles:       RolesFromString(u.Roles),
 		CreatedAt:   u.CreatedAt,
+		pwdHash:     u.Pwdhash,
 	}
 }
 
 func (p *LocalProvider) GetUserByEmail(ctx context.Context, email string) (*User, error) {
-	usr, err := p.DbDAO.LocalUserGetByEmail(ctx, email)
+	usr, err := p.db.LocalUserGetByEmail(ctx, email)
 	if err != nil {
 		return nil, p.log.Errorw(ctx, err, "cannot find user by email='%s'", email)
 	}
@@ -41,7 +50,7 @@ func (p *LocalProvider) GetUserByEmail(ctx context.Context, email string) (*User
 }
 
 func (p *LocalProvider) ListUsers(ctx context.Context) ([]*User, int, error) {
-	usrList, err := p.DbDAO.LocalUserList(ctx)
+	usrList, err := p.db.LocalUserList(ctx)
 	if err != nil {
 		return nil, -1, p.log.Errorw(ctx, err, "cannot list users")
 	}
@@ -55,13 +64,19 @@ func (p *LocalProvider) ListUsers(ctx context.Context) ([]*User, int, error) {
 }
 
 func (p *LocalProvider) CreateUser(ctx context.Context, email string, name string, roles Roles) (*User, error) {
-	tx, rollbacker, err := p.DbDAO.BeginTx(ctx)
+	tx, rollbacker, err := p.db.BeginTx(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer rollbacker()
 
-	err = tx.LocalUserInsert(ctx, email, name, roles.ToString(), time.Now().UTC())
+	err = tx.LocalUserInsert(ctx, &dao.LocalUserInsertParams{
+		Email:       email,
+		DisplayName: name,
+		Roles:       roles.ToString(),
+		CreatedAt:   time.Now().UTC(),
+		Pwdhash:     "", // set initial pass to empty prevents login
+	})
 	if err != nil {
 		return nil, p.log.Errorw(ctx, err, "cannot insert user with email='%s'", email)
 	}
@@ -75,7 +90,7 @@ func (p *LocalProvider) CreateUser(ctx context.Context, email string, name strin
 }
 
 func (p *LocalProvider) AssignRoles(ctx context.Context, email string, roles []RoleID) ([]RoleID, error) {
-	tx, rollbacker, err := p.DbDAO.BeginTx(ctx)
+	tx, rollbacker, err := p.db.BeginTx(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +109,74 @@ func (p *LocalProvider) AssignRoles(ctx context.Context, email string, roles []R
 	return RolesFromString(usr.Roles), tx.Commit(ctx)
 }
 
-func (p *LocalProvider) ValidateToken(ctx context.Context, token string) (userID string, err error) {
-	//TODO implement me
-	panic("implement me")
+// CheckPassword compares pass to pwdhash stored in db. Used only in LocalProvider.
+func (p *LocalProvider) CheckPassword(_ context.Context, usr *User, pass string) error {
+	// pkg/conf/conf.go:Config.Auth.ClientSecret holds password salt.
+	if usr.pwdHash == "" {
+		return fmt.Errorf("user has not set their password")
+	}
+
+	var newHash []byte
+	s2k.Salted(newHash, sha512.New(), []byte(pass), []byte(p.conf.ClientSecret))
+
+	delta := bytes.Compare(newHash, []byte(usr.pwdHash))
+	if delta != 0 {
+		return fmt.Errorf("invalid password")
+	}
+
+	return nil
+}
+
+// SetPassword sets a users stored in db. Used only in LocalProvider. Use empty pass to prevent login.
+func (p *LocalProvider) SetPassword(ctx context.Context, usr *User, pass string) error {
+	// pkg/conf/conf.go:Config.Auth.ClientSecret holds password salt.
+	if pass == "" {
+		err := p.db.LocalUserSetPass(ctx, "", usr.GetEmail())
+		if err != nil {
+			return p.log.Errorw(ctx, err, "cannot set empty password")
+		}
+	}
+
+	var newPass []byte
+	s2k.Salted(newPass, sha512.New(), []byte(pass), []byte(p.conf.ClientSecret))
+	err := p.db.LocalUserSetPass(ctx, string(newPass), usr.GetEmail())
+	if err != nil {
+		return p.log.Errorw(ctx, err, "cannot update password")
+	}
+
+	return nil
+}
+
+func (p *LocalProvider) ValidateToken(ctx context.Context, tokenString string) (userID string, err error) {
+	token, err := jwt.ParseWithClaims(tokenString, &JwtClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(p.conf.ClientSecret), nil
+	})
+	if err != nil {
+		return "", p.log.Errorw(ctx, err, "cannot parse token")
+	}
+
+	if claims, ok := token.Claims.(*JwtClaims); ok && token.Valid {
+		return claims.Subject, nil
+	}
+
+	return "", fmt.Errorf("invalid token")
+}
+
+func (p *LocalProvider) IssueToken(ctx context.Context, email string, scope Roles) (string, error) {
+	// Create the claims
+	claims := JwtClaims{
+		Scope: scope.ToString(),
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour).UTC()),
+			IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
+			NotBefore: jwt.NewNumericDate(time.Now().UTC()),
+			Issuer:    p.conf.Provider,
+			Subject:   email,
+			Audience:  []string{email},
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	signedToken, err := token.SignedString([]byte(p.conf.ClientSecret))
+	return signedToken, p.log.Errorw(ctx, err, "cannot sign token")
 }

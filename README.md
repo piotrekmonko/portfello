@@ -87,7 +87,7 @@ auth:
   connection_id: "con_CONNECTION_ID"
 ```
 
-Set up an account on [Auth0](manage.auth0.com), then create:
+Set up an account on [Auth0](https://manage.auth0.com), then create:
 
 - an API, call it "Portfello API"
 - an API Audience, this is up to you

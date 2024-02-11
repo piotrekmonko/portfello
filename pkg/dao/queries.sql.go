@@ -180,15 +180,24 @@ func (q *Queries) LocalUserGetByEmail(ctx context.Context, email string) (*Local
 }
 
 const localUserInsert = `-- name: LocalUserInsert :exec
-INSERT INTO local_user (email, display_name, roles, created_at) VALUES ($1, $2, $3, $4)
+INSERT INTO local_user (email, display_name, roles, created_at, pwdhash) VALUES ($1, $2, $3, $4, $5)
 `
 
-func (q *Queries) LocalUserInsert(ctx context.Context, email string, displayName string, roles string, createdAt time.Time) error {
+type LocalUserInsertParams struct {
+	Email       string
+	DisplayName string
+	Roles       string
+	CreatedAt   time.Time
+	Pwdhash     string
+}
+
+func (q *Queries) LocalUserInsert(ctx context.Context, arg *LocalUserInsertParams) error {
 	_, err := q.db.ExecContext(ctx, localUserInsert,
-		email,
-		displayName,
-		roles,
-		createdAt,
+		arg.Email,
+		arg.DisplayName,
+		arg.Roles,
+		arg.CreatedAt,
+		arg.Pwdhash,
 	)
 	return err
 }
@@ -224,6 +233,15 @@ func (q *Queries) LocalUserList(ctx context.Context) ([]*LocalUser, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const localUserSetPass = `-- name: LocalUserSetPass :exec
+UPDATE local_user SET pwdhash = $1 WHERE email = $2
+`
+
+func (q *Queries) LocalUserSetPass(ctx context.Context, pwdhash string, email string) error {
+	_, err := q.db.ExecContext(ctx, localUserSetPass, pwdhash, email)
+	return err
 }
 
 const localUserUpdate = `-- name: LocalUserUpdate :exec

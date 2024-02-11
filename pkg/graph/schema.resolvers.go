@@ -9,13 +9,13 @@ import (
 )
 
 // SelfCheck is the resolver for the selfCheck field.
-func (r *mutationResolver) SelfCheck(ctx context.Context) (bool, error) {
+func (r *mutationResolver) SelfCheck(_ context.Context) (bool, error) {
 	err := r.Conf.Validate()
 	return err == nil, err
 }
 
 // Ping is the resolver for the ping field.
-func (r *queryResolver) Ping(ctx context.Context) (string, error) {
+func (r *queryResolver) Ping(_ context.Context) (string, error) {
 	return "pong", nil
 }
 

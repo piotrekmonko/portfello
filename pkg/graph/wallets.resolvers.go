@@ -16,7 +16,7 @@ import (
 )
 
 // Description is the resolver for the description field.
-func (r *expenseResolver) Description(ctx context.Context, obj *dao.Expense) (*string, error) {
+func (r *expenseResolver) Description(_ context.Context, obj *dao.Expense) (*string, error) {
 	return obj.GetDescription(), nil
 }
 
@@ -27,7 +27,7 @@ func (r *mutationResolver) CreateWallet(ctx context.Context, input model.CreateW
 		return nil, auth.ErrNotAuthorized
 	}
 
-	q, rollBacker, err := r.DbDAO.BeginTx(ctx)
+	q, rollBacker, err := r.Dao.BeginTx(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("cannot crate new wallet: %w", err)
 	}
@@ -37,7 +37,7 @@ func (r *mutationResolver) CreateWallet(ctx context.Context, input model.CreateW
 		ID:        shortuuid.New(),
 		UserID:    user.ID,
 		Balance:   0,
-		Currency:  "USD",
+		Currency:  input.Currency,
 		CreatedAt: time.Time{},
 	})
 	if err != nil {
@@ -59,12 +59,12 @@ func (r *queryResolver) ListWallets(ctx context.Context) ([]*dao.Wallet, error) 
 		return nil, auth.ErrNotAuthorized
 	}
 
-	return r.DbDAO.WalletsByUser(ctx, user.ID)
+	return r.Dao.WalletsByUser(ctx, user.ID)
 }
 
 // ListWalletsByUserID is the resolver for the listWalletsByUserId field.
 func (r *queryResolver) ListWalletsByUserID(ctx context.Context, userID string) ([]*dao.Wallet, error) {
-	return r.DbDAO.WalletsByUser(ctx, userID)
+	return r.Dao.WalletsByUser(ctx, userID)
 }
 
 // ListExpenses is the resolver for the listExpenses field.
@@ -74,12 +74,12 @@ func (r *queryResolver) ListExpenses(ctx context.Context, walletID string) ([]*d
 		return nil, auth.ErrNotAuthorized
 	}
 
-	return r.DbDAO.ExpenseListByWalletByUser(ctx, walletID, user.ID)
+	return r.Dao.ExpenseListByWalletByUser(ctx, walletID, user.ID)
 }
 
 // ListExpensesByUserID is the resolver for the listExpensesByUserId field.
 func (r *queryResolver) ListExpensesByUserID(ctx context.Context, userID string, walletID string) ([]*dao.Expense, error) {
-	return r.DbDAO.ExpenseListByWalletByUser(ctx, walletID, userID)
+	return r.Dao.ExpenseListByWalletByUser(ctx, walletID, userID)
 }
 
 // Expense returns ExpenseResolver implementation.

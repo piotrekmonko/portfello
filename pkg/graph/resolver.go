@@ -12,6 +12,6 @@ import (
 
 type Resolver struct {
 	Conf        *conf.Config
-	DbDAO       *dao.DAO
+	Dao         *dao.DAO
 	AuthService *auth.Service
 }

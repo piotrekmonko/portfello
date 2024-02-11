@@ -62,9 +62,13 @@ func TestLog_Levels(t *testing.T) {
 }
 
 func TestNewLogger(t *testing.T) {
-	logger := NewLogger(&conf.Logging{
-		Level:  "debug",
-		Format: "dev",
+	logger, syncer, err := NewLogger(&conf.Config{
+		Logging: conf.Logging{
+			Level:  "debug",
+			Format: "dev",
+		},
 	})
+	assert.Nil(t, err)
 	assert.NotNil(t, logger)
+	syncer()
 }

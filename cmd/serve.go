@@ -24,11 +24,8 @@ package cmd
 import (
 	"context"
 	"errors"
-	"github.com/piotrekmonko/portfello/pkg/auth"
 	"github.com/piotrekmonko/portfello/pkg/conf"
-	"github.com/piotrekmonko/portfello/pkg/dao"
 	"github.com/piotrekmonko/portfello/pkg/logz"
-	"github.com/piotrekmonko/portfello/pkg/server"
 	"github.com/spf13/cobra"
 	"net/http"
 	"os"
@@ -41,38 +38,37 @@ import (
 var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Start GraphQL server",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		ctx := cmd.Context()
-		conf := conf.New()
-		log := logz.NewLogger(&conf.Logging)
+		c := conf.New()
 
-		db, dbQuerier, err := dao.NewDAO(ctx, log, conf.DatabaseDSN)
+		log, syncer, err := logz.NewLogger(c)
 		if err != nil {
 			return err
 		}
-		defer db.Close()
+		defer syncer()
 
-		authProvider, err := auth.NewProvider(ctx, log, conf, dbQuerier)
+		httpSrv, closer, err := initializeServer(cmd.Context(), c)
 		if err != nil {
 			return err
 		}
-		authService := auth.New(authProvider)
+		defer closer()
 
-		sigs := make(chan os.Signal, 1)
-		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
-
-		httpSrv := server.NewServer(ctx, log, conf, dbQuerier, authService)
 		go func() {
 			if err := httpSrv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 				_ = log.Errorw(ctx, err, "error while running http server")
 			}
 		}()
+
+		sigs := make(chan os.Signal, 1)
+		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 		<-sigs
 
+		log.Infow(ctx, "Stopping server...")
 		closeCtx, closeCanc := context.WithTimeout(ctx, time.Second)
 		defer closeCanc()
 		cobra.CheckErr(httpSrv.Shutdown(closeCtx))
-		log.Infow(ctx, "Server stopped")
+		log.Infow(ctx, "Stopped")
 
 		return nil
 	},

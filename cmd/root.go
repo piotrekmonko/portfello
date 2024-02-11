@@ -44,7 +44,7 @@ var rootCmd = &cobra.Command{
 	Short:   "Backend services for PortfelloApp",
 	Long:    `PortfelloApp is an opensource project for managing your household budget.`,
 	Version: "v1.0.0-dev",
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 		lvl, err := cmd.Flags().GetString("level")
 		if err != nil {
 			return fmt.Errorf("cannot read log level: %w", err)

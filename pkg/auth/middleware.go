@@ -29,7 +29,7 @@ func (s *Service) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token, err := jwtmiddleware.AuthHeaderTokenExtractor(r)
 
-		// Allow unauthenticated users in
+		// Allow unauthenticated users in. HasRole handler will return error if access is made to protected resource.
 		if err != nil || token == "" {
 			next.ServeHTTP(w, r)
 			return

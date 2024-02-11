@@ -4,7 +4,7 @@ create table local_user
         primary key,
     display_name        text                    not null,
     roles               text                    not null,
-    pwdHash             text                    not null,
+    pwdhash             text                    not null,
     created_at          timestamp default now() not null
 );
 

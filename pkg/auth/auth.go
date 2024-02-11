@@ -7,8 +7,12 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/eko/gocache/lib/v4/cache"
 	"github.com/eko/gocache/lib/v4/store"
-	gocache_store "github.com/eko/gocache/store/go_cache/v4"
+	gocacheStore "github.com/eko/gocache/store/go_cache/v4"
+	"github.com/golang-jwt/jwt/v4"
 	gocache "github.com/patrickmn/go-cache"
+	"github.com/piotrekmonko/portfello/pkg/conf"
+	"github.com/piotrekmonko/portfello/pkg/dao"
+	"github.com/piotrekmonko/portfello/pkg/logz"
 	"time"
 )
 
@@ -19,10 +23,19 @@ type Service struct {
 
 func New(p Provider) *Service {
 	gocacheClient := gocache.New(50*time.Minute, 100*time.Minute)
-	gocacheStore := gocache_store.NewGoCache(gocacheClient)
+	cacheStore := gocacheStore.NewGoCache(gocacheClient)
 	return &Service{provider: p,
-		cUsers: cache.New[*User](gocacheStore),
+		cUsers: cache.New[*User](cacheStore),
 	}
+}
+
+func NewFromConfig(ctx context.Context, log *logz.Log, c *conf.Config, dbQuerier *dao.DAO) (*Service, error) {
+	authProvider, err := NewProvider(ctx, log, c, dbQuerier)
+	if err != nil {
+		return nil, err
+	}
+
+	return New(authProvider), nil
 }
 
 func (s *Service) GetUsers(ctx context.Context) ([]*User, error) {
@@ -77,7 +90,7 @@ func (s *Service) AssignRoles(ctx context.Context, email string, roles []RoleID)
 	return s.provider.AssignRoles(ctx, user.ID, roles)
 }
 
-func (s *Service) HasRole(ctx context.Context, obj interface{}, next graphql.Resolver, role RoleID) (res interface{}, err error) {
+func (s *Service) HasRole(ctx context.Context, _ interface{}, next graphql.Resolver, role RoleID) (res interface{}, err error) {
 	user := GetCtxUser(ctx)
 	if user == nil {
 		return nil, ErrNotAuthorized
@@ -88,4 +101,42 @@ func (s *Service) HasRole(ctx context.Context, obj interface{}, next graphql.Res
 	}
 
 	return nil, nil
+}
+
+type passChecker interface {
+	CheckPassword(ctx context.Context, usr *User, pass string) error
+	SetPassword(ctx context.Context, usr *User, pass string) error
+}
+
+// CheckPassword compares pass to pwdhash stored in db. Used only with LocalProvider.
+func (s *Service) CheckPassword(ctx context.Context, usr *User, pass string) error {
+	passCheckerService, isPassChecker := s.provider.(passChecker)
+	if !isPassChecker {
+		return fmt.Errorf("password login not available with this backend")
+	}
+
+	return passCheckerService.CheckPassword(ctx, usr, pass)
+}
+
+func (s *Service) SetPassword(ctx context.Context, usr *User, pass string) error {
+	passCheckerService, isPassChecker := s.provider.(passChecker)
+	if !isPassChecker {
+		return fmt.Errorf("password change not available with this backend")
+	}
+
+	return passCheckerService.SetPassword(ctx, usr, pass)
+}
+
+func (s *Service) IssueToken(ctx context.Context, usr *User) (string, error) {
+	return s.provider.IssueToken(ctx, usr.GetEmail(), usr.Roles)
+}
+
+type JwtClaims struct {
+	jwt.RegisteredClaims
+	// Scope holds the issuers roles. Should not be empty.
+	Scope string `json:"scope"`
+}
+
+func (c JwtClaims) Validate(_ context.Context) error {
+	return nil
 }

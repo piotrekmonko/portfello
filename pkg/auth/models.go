@@ -50,8 +50,8 @@ func (r Roles) ToString() string {
 func RolesFromString(r string) Roles {
 	parts := strings.Split(r, ";")
 	roleIDs := make(Roles, 0, len(parts))
-	for _, roleID := range roleIDs {
-		roleIDs = append(roleIDs, RoleID(roleID))
+	for i := range roleIDs {
+		roleIDs = append(roleIDs, RoleID(parts[i]))
 	}
 	return roleIDs
 }
@@ -64,9 +64,12 @@ type User struct {
 	Roles       []RoleID  `json:"roles"`
 	CreatedAt   time.Time `json:"created_at"`
 
-	// Extra data to support LE cert, stored in local db
+	// Extra data to support LE cert, stored in local db.
 	Registration *registration.Resource
 	key          crypto.PrivateKey
+
+	// Fields for LocalUser support.
+	pwdHash string
 }
 
 func (u *User) GetEmail() string {

@@ -28,28 +28,32 @@ type Logger interface {
 	Infof(ctx context.Context, msg string, args ...interface{})
 	Warnw(ctx context.Context, msg string, keysAndValues ...interface{})
 	Errorw(ctx context.Context, err error, msg string, keysAndValues ...interface{}) error
+	Printf(s string, i ...interface{})
 }
 
-func NewLogger(c *conf.Logging) Logger {
+func NewLogger(c *conf.Config) (*Log, func(), error) {
 	var cfg zap.Config
 
-	if c.Format == "dev" {
+	if c.Logging.Format == "dev" {
 		cfg = zap.NewDevelopmentConfig()
 	} else {
 		cfg = zap.NewProductionConfig()
 	}
 
-	if err := ParseFlag(c.Level); err != nil {
-		panic(err)
+	if err := ParseFlag(c.Logging.Level); err != nil {
+		return nil, nil, err
 	}
 
 	cfg.Level.SetLevel(AtomicLevel.Level())
 	l, err := cfg.Build(zap.AddCallerSkip(1))
 	if err != nil {
-		panic(err)
+		return nil, nil, err
 	}
 
-	return &Log{SugaredLogger: l.Sugar().With("v", version)}
+	sl := &Log{SugaredLogger: l.Sugar().With("v", version)}
+	sl.SugaredLogger.Infow("logging configured", "level", AtomicLevel.String())
+
+	return sl, func() { _ = l.Sync() }, nil
 }
 
 var _ Logger = (*Log)(nil)
@@ -91,6 +95,12 @@ func (l *Log) Errorw(ctx context.Context, err error, msg string, keysAndValues .
 	return fmt.Errorf("%s: %w", msg, err)
 }
 
+// Printf is for stdlib compatibility, logging at level INFO.
+func (l *Log) Printf(s string, i ...interface{}) {
+	l.SugaredLogger.Infof(s, i...)
+}
+
+// WithCtx sets key-value pairs to add as fields to log entries.
 func WithCtx(ctx context.Context, keysAndValues ...any) context.Context {
 	pairs, havePairs := ctx.Value(loggerCtx).([]any)
 	if !havePairs {
