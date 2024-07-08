@@ -1,27 +1,25 @@
 package auth
 
 import (
-	"bytes"
 	"context"
-	"crypto/sha512"
 	"fmt"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/piotrekmonko/portfello/pkg/conf"
 	"github.com/piotrekmonko/portfello/pkg/dao"
 	"github.com/piotrekmonko/portfello/pkg/logz"
-	"golang.org/x/crypto/openpgp/s2k"
+	"golang.org/x/crypto/bcrypt"
 	"time"
 )
 
 type LocalProvider struct {
-	db   *dao.DAO
+	db   dao.DBInterface
 	log  logz.Logger
 	conf *conf.Auth0
 }
 
 var _ Provider = (*LocalProvider)(nil)
 
-func NewLocalProvider(log logz.Logger, dao *dao.DAO, conf *conf.Auth0) *LocalProvider {
+func NewLocalProvider(log logz.Logger, dao dao.DBInterface, conf *conf.Auth0) *LocalProvider {
 	return &LocalProvider{
 		db:   dao,
 		log:  log.Named("prov.local"),
@@ -43,7 +41,7 @@ func userFromLocal(u *dao.LocalUser) *User {
 func (p *LocalProvider) GetUserByEmail(ctx context.Context, email string) (*User, error) {
 	usr, err := p.db.LocalUserGetByEmail(ctx, email)
 	if err != nil {
-		return nil, p.log.Errorw(ctx, err, "cannot find user by email='%s'", email)
+		return nil, p.log.Errorw(ctx, err, "cannot find user by email", "email", email)
 	}
 
 	return userFromLocal(usr), nil
@@ -78,12 +76,12 @@ func (p *LocalProvider) CreateUser(ctx context.Context, email string, name strin
 		Pwdhash:     "", // set initial pass to empty prevents login
 	})
 	if err != nil {
-		return nil, p.log.Errorw(ctx, err, "cannot insert user with email='%s'", email)
+		return nil, p.log.Errorw(ctx, err, "cannot insert user with email", "email", email)
 	}
 
 	usr, err := tx.LocalUserGetByEmail(ctx, email)
 	if err != nil {
-		return nil, p.log.Errorw(ctx, err, "cannot retrieve user with email='%s'", email)
+		return nil, p.log.Errorw(ctx, err, "cannot retrieve user with email", "email", email)
 	}
 
 	return userFromLocal(usr), tx.Commit(ctx)
@@ -98,29 +96,25 @@ func (p *LocalProvider) AssignRoles(ctx context.Context, email string, roles []R
 
 	err = tx.LocalUserUpdate(ctx, Roles(roles).ToString(), email)
 	if err != nil {
-		return nil, p.log.Errorw(ctx, err, "cannot insert user with email='%s'", email)
+		return nil, p.log.Errorw(ctx, err, "cannot insert user with email", "email", email)
 	}
 
 	usr, err := tx.LocalUserGetByEmail(ctx, email)
 	if err != nil {
-		return nil, p.log.Errorw(ctx, err, "cannot retrieve user with email='%s'", email)
+		return nil, p.log.Errorw(ctx, err, "cannot retrieve user with email", "email", email)
 	}
 
 	return RolesFromString(usr.Roles), tx.Commit(ctx)
 }
 
 // CheckPassword compares pass to pwdhash stored in db. Used only in LocalProvider.
-func (p *LocalProvider) CheckPassword(_ context.Context, usr *User, pass string) error {
-	// pkg/conf/conf.go:Config.Auth.ClientSecret holds password salt.
+func (p *LocalProvider) CheckPassword(ctx context.Context, usr *User, pass string) error {
 	if usr.pwdHash == "" {
 		return fmt.Errorf("user has not set their password")
 	}
 
-	var newHash []byte
-	s2k.Salted(newHash, sha512.New(), []byte(pass), []byte(p.conf.ClientSecret))
-
-	delta := bytes.Compare(newHash, []byte(usr.pwdHash))
-	if delta != 0 {
+	err := bcrypt.CompareHashAndPassword([]byte(usr.pwdHash), []byte(pass))
+	if err != nil {
 		return fmt.Errorf("invalid password")
 	}
 
@@ -129,7 +123,6 @@ func (p *LocalProvider) CheckPassword(_ context.Context, usr *User, pass string)
 
 // SetPassword sets a users stored in db. Used only in LocalProvider. Use empty pass to prevent login.
 func (p *LocalProvider) SetPassword(ctx context.Context, usr *User, pass string) error {
-	// pkg/conf/conf.go:Config.Auth.ClientSecret holds password salt.
 	if pass == "" {
 		err := p.db.LocalUserSetPass(ctx, "", usr.GetEmail())
 		if err != nil {
@@ -138,8 +131,12 @@ func (p *LocalProvider) SetPassword(ctx context.Context, usr *User, pass string)
 	}
 
 	var newPass []byte
-	s2k.Salted(newPass, sha512.New(), []byte(pass), []byte(p.conf.ClientSecret))
-	err := p.db.LocalUserSetPass(ctx, string(newPass), usr.GetEmail())
+	newPass, err := bcrypt.GenerateFromPassword([]byte(pass), bcrypt.DefaultCost)
+	if err != nil {
+		return p.log.Errorw(ctx, err, "cannot use this password")
+	}
+
+	err = p.db.LocalUserSetPass(ctx, string(newPass), usr.GetEmail())
 	if err != nil {
 		return p.log.Errorw(ctx, err, "cannot update password")
 	}

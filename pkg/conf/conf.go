@@ -85,8 +85,10 @@ func NewTestConfig() *Config {
 	return &Config{
 		DatabaseDSN: "",
 		Graph:       GraphQL{},
-		Auth:        Auth0{},
-		Logging:     Logging{},
+		Auth: Auth0{
+			ClientSecret: "secret-key",
+		},
+		Logging: Logging{},
 	}
 }
 

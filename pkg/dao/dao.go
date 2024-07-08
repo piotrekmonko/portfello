@@ -17,6 +17,14 @@ type DAO struct {
 	*Queries
 }
 
+type DBInterface interface {
+	Querier
+	DB() *sql.DB
+	Ping(ctx context.Context) error
+	BeginTx(ctx context.Context) (DBInterface, func(), error)
+	Commit(ctx context.Context) error
+}
+
 func NewDAO(ctx context.Context, log *logz.Log, c *conf.Config) (*DAO, func(), error) {
 	db, err := sql.Open("postgres", c.DatabaseDSN)
 	if err != nil {
@@ -51,7 +59,7 @@ type beginner interface {
 	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
 }
 
-func (q *DAO) BeginTx(ctx context.Context) (*DAO, func(), error) {
+func (q *DAO) BeginTx(ctx context.Context) (DBInterface, func(), error) {
 	tx, err := q.db.(beginner).BeginTx(ctx, nil)
 	if err != nil {
 		return nil, func() {}, q.log.Errorw(ctx, err, "error while starting transaction")

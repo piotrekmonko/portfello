@@ -1,0 +1,6 @@
+with-expecter: True
+outpkg: "mock_{{.PackageName}}"
+packages:
+  github.com/piotrekmonko/portfello/pkg/dao:
+    config:
+      all: true

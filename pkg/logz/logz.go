@@ -50,7 +50,7 @@ func NewLogger(c *conf.Config) (*Log, func(), error) {
 		return nil, nil, err
 	}
 
-	sl := &Log{SugaredLogger: l.Sugar().With("v", version)}
+	sl := &Log{SugaredLogger: l.Sugar().With("v", GetVer())}
 	sl.SugaredLogger.Infow("logging configured", "level", AtomicLevel.String())
 
 	return sl, func() { _ = l.Sync() }, nil

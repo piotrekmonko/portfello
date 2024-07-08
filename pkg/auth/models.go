@@ -50,12 +50,18 @@ func (r Roles) ToString() string {
 func RolesFromString(r string) Roles {
 	parts := strings.Split(r, ";")
 	roleIDs := make(Roles, 0, len(parts))
-	for i := range roleIDs {
-		roleIDs = append(roleIDs, RoleID(parts[i]))
+	for _, role := range parts {
+		switch role {
+		case RoleAdmin.String(), RoleSuperAdmin.String(), RoleUser.String():
+			roleIDs = append(roleIDs, RoleID(role))
+		default:
+			continue
+		}
 	}
 	return roleIDs
 }
 
+// User model abstracts database, gql and auth data.
 type User struct {
 	// Basic data kept and fetched from auth provider
 	ID          string    `json:"id"`

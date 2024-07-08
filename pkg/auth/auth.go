@@ -21,6 +21,7 @@ type Service struct {
 	cUsers   *cache.Cache[*User]
 }
 
+// New returns an auth.Service using given provider.
 func New(p Provider) *Service {
 	gocacheClient := gocache.New(50*time.Minute, 100*time.Minute)
 	cacheStore := gocacheStore.NewGoCache(gocacheClient)
@@ -29,6 +30,7 @@ func New(p Provider) *Service {
 	}
 }
 
+// NewFromConfig initializes a provider based on config and returns an auth.Service.
 func NewFromConfig(ctx context.Context, log *logz.Log, c *conf.Config, dbQuerier *dao.DAO) (*Service, error) {
 	authProvider, err := NewProvider(ctx, log, c, dbQuerier)
 	if err != nil {

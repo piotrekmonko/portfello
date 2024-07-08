@@ -13,6 +13,7 @@ const CtxUserKey CtxKey = 1
 
 var ErrNotAuthorized = fmt.Errorf("not authorized")
 
+// GetCtxUser returns the auth.User instance from context. Available only in routes wrapped in Service.Middleware.
 func GetCtxUser(ctx context.Context) *User {
 	ctxUser := ctx.Value(CtxUserKey)
 	if ctxUser == nil {
