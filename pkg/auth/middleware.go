@@ -28,6 +28,7 @@ func setCtxUser(ctx context.Context, usr *User) context.Context {
 
 func (s *Service) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 		token, err := jwtmiddleware.AuthHeaderTokenExtractor(r)
 
 		// Allow unauthenticated users in. HasRole handler will return error if access is made to protected resource.
@@ -36,22 +37,21 @@ func (s *Service) Middleware(next http.Handler) http.Handler {
 			return
 		}
 
-		userID, err := s.provider.ValidateToken(r.Context(), token)
+		userID, err := s.provider.ValidateToken(ctx, token)
 		if err != nil {
-			http.Error(w, "invalid token", http.StatusForbidden)
+			http.Error(w, `{"error":"invalid token"}`, http.StatusForbidden)
 			return
 		}
 
 		// Get the user from the auth provider
-		user, err := s.GetUser(r.Context(), userID)
+		user, err := s.GetUserByID(ctx, userID)
 		if err != nil {
-			http.Error(w, "invalid user token", http.StatusForbidden)
+			http.Error(w, `{"error":"invalid user token"}`, http.StatusForbidden)
 			return
 		}
 
 		// And put them on context
-		ctx := setCtxUser(r.Context(), user)
-		r = r.WithContext(ctx)
+		ctx = setCtxUser(ctx, user)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

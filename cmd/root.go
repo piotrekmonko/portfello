@@ -52,5 +52,5 @@ func init() {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	cobra.CheckErr(conf.InitConfig(cfgFile))
+	cobra.CheckErr(conf.InitConfig(cfgFile, "PORTFELLO"))
 }

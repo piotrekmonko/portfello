@@ -9,6 +9,8 @@ import (
 )
 
 type Provider interface {
+	ProviderName() string
+	GetUserByID(ctx context.Context, userID string) (*User, error)
 	GetUserByEmail(ctx context.Context, email string) (*User, error)
 	ListUsers(ctx context.Context) ([]*User, int, error)
 	CreateUser(ctx context.Context, email string, name string, roles Roles) (*User, error)

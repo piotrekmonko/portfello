@@ -1,6 +1,12 @@
-version: '3'
-
 services:
+  app:
+    build:
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - database_dsn="postgres://user:pass@localhost:15432/portfello?sslmode=disable"
+
   db:
     image: bitnami/postgresql:latest
     restart: always

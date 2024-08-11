@@ -2,3 +2,8 @@
 .portfello-local.yaml
 man
 main
+
+
+# Ignore DevSpace cache and log folder
+.devspace/
+test-db.sqlite

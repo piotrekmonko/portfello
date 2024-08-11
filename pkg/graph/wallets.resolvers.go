@@ -59,6 +59,10 @@ func (r *queryResolver) ListWallets(ctx context.Context) ([]*dao.Wallet, error) 
 		return nil, auth.ErrNotAuthorized
 	}
 
+	if user.Roles.Has(auth.RoleAdmin) {
+		return r.Dao.WalletsByAdmin(ctx)
+	}
+
 	return r.Dao.WalletsByUser(ctx, user.ID)
 }
 

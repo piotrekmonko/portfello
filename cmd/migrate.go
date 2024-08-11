@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/piotrekmonko/portfello/dbschema"
 	"github.com/piotrekmonko/portfello/pkg/conf"
@@ -19,7 +20,20 @@ func init() {
 // migrateCmd represents the migrate command
 var migrateCmd = &cobra.Command{
 	Use:   "migrate",
-	Short: "A tool to migrate your database",
+	Short: "A tool to migrate your database. Without params will report if migrations are needed.",
+	Run: func(cmd *cobra.Command, args []string) {
+		conf := conf.New()
+		migrator, err := dbschema.NewMigrator(conf.DatabaseDSN)
+		if err != nil {
+			logFatalMigrate(err)
+		}
+		defer migrator.Close()
+
+		_ = cmd.Help()
+
+		version, dirty, err := migrator.Version()
+		fmt.Printf("\nDatabase is dirty=%t at version %d, error: %v\n", dirty, version, err)
+	},
 }
 
 // upCmd represents the up command
@@ -32,6 +46,7 @@ var upCmd = &cobra.Command{
 		if err != nil {
 			logFatalMigrate(err)
 		}
+		defer migrator.Close()
 
 		err = migrator.Up()
 		if err != nil {
@@ -50,6 +65,7 @@ var downCmd = &cobra.Command{
 		if err != nil {
 			logFatalMigrate(err)
 		}
+		defer migrator.Close()
 
 		err = migrator.Steps(-1)
 		if err != nil {
@@ -68,6 +84,7 @@ var dropCmd = &cobra.Command{
 		if err != nil {
 			logFatalMigrate(err)
 		}
+		defer migrator.Close()
 
 		err = migrator.Drop()
 		if err != nil {

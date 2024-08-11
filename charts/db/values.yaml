@@ -1,0 +1,6 @@
+auth:
+  username: "user"
+  password: "pass"
+  database: "portfello"
+persistence:
+  size: 3Gi

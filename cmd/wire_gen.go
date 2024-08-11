@@ -64,13 +64,14 @@ func initializeServer(ctx context.Context, c *conf.Config) (*http.Server, func()
 		cleanup()
 		return nil, nil, err
 	}
-	httpServer, err := server.NewServer(ctx, log, c, serveMux)
+	httpServer, cleanup3, err := server.NewServer(ctx, log, c, serveMux)
 	if err != nil {
 		cleanup2()
 		cleanup()
 		return nil, nil, err
 	}
 	return httpServer, func() {
+		cleanup3()
 		cleanup2()
 		cleanup()
 	}, nil

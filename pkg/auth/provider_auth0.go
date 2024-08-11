@@ -70,6 +70,10 @@ func NewAuth0Provider(ctx context.Context, log logz.Logger, conf *conf.Auth0) (*
 	}, nil
 }
 
+func (a *Auth0Provider) ProviderName() string {
+	return conf.AuthProviderAuth0
+}
+
 func (a *Auth0Provider) ValidateToken(ctx context.Context, token string) (string, error) {
 	validatedToken, err := a.jwtValidator.ValidateToken(ctx, token)
 	if err != nil {
@@ -81,6 +85,33 @@ func (a *Auth0Provider) ValidateToken(ctx context.Context, token string) (string
 	// claims := validatedToken.(validator.ValidatedClaims).CustomClaims
 
 	return userID, nil
+}
+
+func (a *Auth0Provider) GetUserByID(ctx context.Context, userID string) (*User, error) {
+	log := a.log.With("userID", userID)
+
+	auth0User, err := a.manager.User.Read(ctx, userID)
+	if err != nil || auth0User == nil {
+		return nil, log.Errorw(ctx, err, "cannot find user by id")
+	}
+
+	roles, err := a.manager.User.Roles(ctx, auth0User.GetID())
+	if err != nil {
+		return nil, log.Errorw(ctx, err, "cannot read user roles")
+	}
+
+	roleSlice := make(Roles, len(roles.Roles))
+	for _, role := range roles.Roles {
+		roleSlice = append(roleSlice, RoleID(role.GetName()))
+	}
+
+	return &User{
+		ID:          auth0User.GetID(),
+		Email:       auth0User.GetEmail(),
+		DisplayName: auth0User.GetName(),
+		CreatedAt:   auth0User.GetCreatedAt(),
+		Roles:       roleSlice,
+	}, nil
 }
 
 func (a *Auth0Provider) GetUserByEmail(ctx context.Context, email string) (*User, error) {
@@ -167,7 +198,7 @@ func (a *Auth0Provider) CreateUser(ctx context.Context, email string, name strin
 	if err != nil {
 		var managementError management.Error
 		if errors.As(err, &managementError) && managementError.Status() == http.StatusConflict {
-			a.log.Warnw(ctx, "user(%s) already exists in Auth0", email)
+			a.log.Warnw(ctx, "user already exists in Auth0", "email", email)
 			existingUser, err := a.GetUserByEmail(ctx, email)
 			if err != nil {
 				return nil, a.log.Errorw(ctx, err, "failed at reusing existing Auth0 user(%s)", email)
@@ -198,7 +229,7 @@ func (a *Auth0Provider) CreateUser(ctx context.Context, email string, name strin
 	}
 
 	if err = a.manager.User.AssignRoles(ctx, userReq.GetID(), auth0Roles); err != nil {
-		return nil, a.log.Errorw(ctx, err, "cannot assign roles to user(%s)", email)
+		return nil, a.log.Errorw(ctx, err, "cannot assign roles to user", "email", email, "roles", auth0Roles)
 	}
 
 	return a.GetUserByEmail(ctx, email)

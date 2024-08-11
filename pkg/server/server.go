@@ -10,10 +10,10 @@ import (
 	"time"
 )
 
-func NewServer(ctx context.Context, log *logz.Log, conf *conf.Config, mux *http.ServeMux) (*http.Server, error) {
+func NewServer(ctx context.Context, log *logz.Log, conf *conf.Config, mux *http.ServeMux) (*http.Server, func(), error) {
 
 	corsHandler := cors.New(cors.Options{
-		AllowedOrigins: []string{"localhost:" + conf.Graph.Port, conf.HostName},
+		AllowedOrigins: []string{"http://localhost:" + conf.Graph.Port, "http://" + conf.HostName},
 		AllowedMethods: []string{
 			http.MethodHead,
 			http.MethodGet,
@@ -34,5 +34,14 @@ func NewServer(ctx context.Context, log *logz.Log, conf *conf.Config, mux *http.
 	}
 
 	log.Infof(ctx, "serving on http://localhost:%s/", conf.Graph.Port)
-	return httpSrv, nil
+	return httpSrv, Shutdown(log, httpSrv), nil
+}
+
+func Shutdown(log logz.Logger, s *http.Server) func() {
+	return func() {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		log.Infow(ctx, "shutting down server")
+		_ = log.Errorw(ctx, s.Shutdown(ctx), "error shutting down server")
+	}
 }

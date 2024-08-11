@@ -16,6 +16,8 @@ import (
 	"time"
 )
 
+var ErrInvalidPassword = fmt.Errorf("invalid password")
+
 type Service struct {
 	provider Provider
 	cUsers   *cache.Cache[*User]
@@ -58,10 +60,31 @@ func (s *Service) GetUser(ctx context.Context, userEmail string) (*User, error) 
 	if user == nil {
 		user, err = s.provider.GetUserByEmail(ctx, userEmail)
 		if err != nil {
-			return nil, fmt.Errorf("cannot find user in auth0: %w", err)
+			return nil, fmt.Errorf("%s provider: %w", s.provider.ProviderName(), err)
 		}
 
 		err = s.cUsers.Set(ctx, userEmail, user)
+		if err != nil {
+			return nil, fmt.Errorf("cannot save auth0 user in cache: %w", err)
+		}
+	}
+
+	return user, nil
+}
+
+func (s *Service) GetUserByID(ctx context.Context, userID string) (*User, error) {
+	user, err := s.cUsers.Get(ctx, userID)
+	if err != nil && !errors.Is(err, store.NotFound{}) {
+		return nil, fmt.Errorf("cannot reach user cache: %w", err)
+	}
+
+	if user == nil {
+		user, err = s.provider.GetUserByID(ctx, userID)
+		if err != nil {
+			return nil, fmt.Errorf("%s provider: %w", s.provider.ProviderName(), err)
+		}
+
+		err = s.cUsers.Set(ctx, userID, user)
 		if err != nil {
 			return nil, fmt.Errorf("cannot save auth0 user in cache: %w", err)
 		}
@@ -114,7 +137,7 @@ type passChecker interface {
 func (s *Service) CheckPassword(ctx context.Context, usr *User, pass string) error {
 	passCheckerService, isPassChecker := s.provider.(passChecker)
 	if !isPassChecker {
-		return fmt.Errorf("password login not available with this backend")
+		return fmt.Errorf("password login not available with '%s' backend", s.provider.ProviderName())
 	}
 
 	return passCheckerService.CheckPassword(ctx, usr, pass)

@@ -4,8 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/piotrekmonko/portfello/dbschema"
 	"github.com/piotrekmonko/portfello/pkg/conf"
 	"github.com/piotrekmonko/portfello/pkg/logz"
+	"strings"
 	"time"
 )
 
@@ -25,8 +29,28 @@ type DBInterface interface {
 	Commit(ctx context.Context) error
 }
 
-func NewDAO(ctx context.Context, log *logz.Log, c *conf.Config) (*DAO, func(), error) {
-	db, err := sql.Open("postgres", c.DatabaseDSN)
+func NewDAO(ctx context.Context, logz *logz.Log, c *conf.Config) (*DAO, func(), error) {
+	log := logz.With("dsn", c.DatabaseDSN)
+	driver, dsn, err := driverFromDSN(c.DatabaseDSN)
+	if err != nil {
+		return nil, nil, log.Errorw(ctx, err, "invalid database_dsn")
+	}
+
+	log.Infow(ctx, "connecting to db", "driver", driver, "addr", dsn)
+	if driver == "sqlite" {
+		log.Infof(ctx, "using sqlite database, applying migrations")
+		migrator, err := dbschema.NewMigrator(c.DatabaseDSN)
+		if err != nil {
+			return nil, nil, log.Errorw(ctx, err, "cannot init migrator for in-memory db")
+		}
+
+		err = migrator.Up()
+		if err != nil && !errors.Is(err, migrate.ErrNoChange) {
+			return nil, nil, log.Errorw(ctx, err, "cannot auto-migrate in-memory db")
+		}
+	}
+
+	db, err := sql.Open(driver, dsn)
 	if err != nil {
 		return nil, nil, log.Errorw(ctx, err, "cannot open database")
 	}
@@ -95,4 +119,21 @@ func NilStr(s string) sql.NullString {
 		String: s,
 		Valid:  s != "",
 	}
+}
+
+func driverFromDSN(dsn string) (string, string, error) {
+	if dsn == "" {
+		return "", "", fmt.Errorf("empty")
+	}
+
+	i := strings.Index(dsn, "://")
+	if i < 1 {
+		return "", "", fmt.Errorf("no echema")
+	}
+
+	if dsn[0:i] == "sqlite" {
+		return dsn[0:i], dsn[i+3:], nil
+	}
+
+	return dsn[0:i], dsn, nil
 }

@@ -9,11 +9,8 @@ import (
 	"time"
 )
 
-// Tracks expenses.
 type Expense struct {
-	// A base57 encoded uuid.
-	ID string
-	// Reference to the wallet.
+	ID          string
 	WalletID    string
 	Amount      float64
 	Description sql.NullString
@@ -21,20 +18,16 @@ type Expense struct {
 }
 
 type History struct {
-	ID string
-	// Holds the resource name related resource, such as table name or auth provider name.
+	ID        string
 	Namespace string
-	// Holds the resource ID of the related resource, such as table PK or auth provider id.
 	Reference string
-	// Describes the event.
-	Event string
-	// Identifies the user who triggered the event.
+	Event     string
 	Email     string
 	CreatedAt time.Time
 }
 
-// Holds user data for auth.LocalProvider. Development use only.
 type LocalUser struct {
+	ID          string
 	Email       string
 	DisplayName string
 	Roles       string
@@ -42,11 +35,8 @@ type LocalUser struct {
 	CreatedAt   time.Time
 }
 
-// Holds together a user and different expenses.
 type Wallet struct {
-	// A base57-encoded uuid.
-	ID string
-	// User ID reference to auth provider. This is this wallet Owner.
+	ID        string
 	UserID    string
 	Balance   float64
 	Currency  string

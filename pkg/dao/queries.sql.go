@@ -163,13 +163,32 @@ func (q *Queries) HistoryList(ctx context.Context) ([]*History, error) {
 }
 
 const localUserGetByEmail = `-- name: LocalUserGetByEmail :one
-SELECT email, display_name, roles, pwdhash, created_at FROM local_user WHERE email = $1
+SELECT id, email, display_name, roles, pwdhash, created_at FROM local_user WHERE email = $1
 `
 
 func (q *Queries) LocalUserGetByEmail(ctx context.Context, email string) (*LocalUser, error) {
 	row := q.db.QueryRowContext(ctx, localUserGetByEmail, email)
 	var i LocalUser
 	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.DisplayName,
+		&i.Roles,
+		&i.Pwdhash,
+		&i.CreatedAt,
+	)
+	return &i, err
+}
+
+const localUserGetByID = `-- name: LocalUserGetByID :one
+SELECT id, email, display_name, roles, pwdhash, created_at FROM local_user WHERE id = $1
+`
+
+func (q *Queries) LocalUserGetByID(ctx context.Context, id string) (*LocalUser, error) {
+	row := q.db.QueryRowContext(ctx, localUserGetByID, id)
+	var i LocalUser
+	err := row.Scan(
+		&i.ID,
 		&i.Email,
 		&i.DisplayName,
 		&i.Roles,
@@ -180,10 +199,11 @@ func (q *Queries) LocalUserGetByEmail(ctx context.Context, email string) (*Local
 }
 
 const localUserInsert = `-- name: LocalUserInsert :exec
-INSERT INTO local_user (email, display_name, roles, created_at, pwdhash) VALUES ($1, $2, $3, $4, $5)
+INSERT INTO local_user (id, email, display_name, roles, created_at, pwdhash) VALUES ($1, $2, $3, $4, $5, $6)
 `
 
 type LocalUserInsertParams struct {
+	ID          string
 	Email       string
 	DisplayName string
 	Roles       string
@@ -193,6 +213,7 @@ type LocalUserInsertParams struct {
 
 func (q *Queries) LocalUserInsert(ctx context.Context, arg *LocalUserInsertParams) error {
 	_, err := q.db.ExecContext(ctx, localUserInsert,
+		arg.ID,
 		arg.Email,
 		arg.DisplayName,
 		arg.Roles,
@@ -203,7 +224,7 @@ func (q *Queries) LocalUserInsert(ctx context.Context, arg *LocalUserInsertParam
 }
 
 const localUserList = `-- name: LocalUserList :many
-SELECT email, display_name, roles, pwdhash, created_at FROM local_user ORDER BY email
+SELECT id, email, display_name, roles, pwdhash, created_at FROM local_user ORDER BY email
 `
 
 func (q *Queries) LocalUserList(ctx context.Context) ([]*LocalUser, error) {
@@ -216,6 +237,7 @@ func (q *Queries) LocalUserList(ctx context.Context) ([]*LocalUser, error) {
 	for rows.Next() {
 		var i LocalUser
 		if err := rows.Scan(
+			&i.ID,
 			&i.Email,
 			&i.DisplayName,
 			&i.Roles,
@@ -283,6 +305,39 @@ UPDATE wallet SET balance = $1 WHERE id = $2
 func (q *Queries) WalletUpdateBalance(ctx context.Context, balance float64, iD string) error {
 	_, err := q.db.ExecContext(ctx, walletUpdateBalance, balance, iD)
 	return err
+}
+
+const walletsByAdmin = `-- name: WalletsByAdmin :many
+SELECT id, user_id, balance, currency, created_at FROM wallet ORDER BY wallet.user_id, wallet.created_at
+`
+
+func (q *Queries) WalletsByAdmin(ctx context.Context) ([]*Wallet, error) {
+	rows, err := q.db.QueryContext(ctx, walletsByAdmin)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*Wallet
+	for rows.Next() {
+		var i Wallet
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Balance,
+			&i.Currency,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const walletsByUser = `-- name: WalletsByUser :many

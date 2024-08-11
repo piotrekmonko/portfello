@@ -25,5 +25,6 @@ func init() {
 	rootCmd.AddCommand(provisionCmd)
 
 	provisionCmd.Flags().StringP("user", "u", "", "Add a new user")
-	provisionCmd.Flags().BoolP("test", "t", false, "Add example test data to database")
+	provisionCmd.Flags().BoolP("test", "t", false, "Add example test data")
+	provisionCmd.Flags().IntP("num", "n", 1, "Repeat example test data this many times")
 }

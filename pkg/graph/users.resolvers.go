@@ -94,3 +94,13 @@ func (r *queryResolver) ListUsers(ctx context.Context) ([]*auth.User, error) {
 func (r *queryResolver) GetUser(ctx context.Context, email string) (*auth.User, error) {
 	return r.AuthService.GetUser(ctx, email)
 }
+
+// Roles is the resolver for the roles field.
+func (r *userResolver) Roles(_ context.Context, obj *auth.User) (string, error) {
+	return obj.Roles.ToString(), nil
+}
+
+// User returns UserResolver implementation.
+func (r *Resolver) User() UserResolver { return &userResolver{r} }
+
+type userResolver struct{ *Resolver }

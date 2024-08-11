@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/piotrekmonko/portfello/pkg/conf"
 	"strings"
 	"time"
 )
@@ -29,6 +30,7 @@ func NewMockProvider() (*MockProvider, error) {
 			CreatedAt:    time.Now(),
 			Registration: nil,
 			key:          nil,
+			pwdHash:      "123",
 		},
 		{
 			ID:           "u2",
@@ -38,6 +40,7 @@ func NewMockProvider() (*MockProvider, error) {
 			CreatedAt:    time.Now(),
 			Registration: nil,
 			key:          nil,
+			pwdHash:      "123",
 		},
 		{
 			ID:           "u3",
@@ -47,8 +50,23 @@ func NewMockProvider() (*MockProvider, error) {
 			CreatedAt:    time.Now(),
 			Registration: nil,
 			key:          nil,
+			pwdHash:      "123",
 		},
 	}}, nil
+}
+
+func (m *MockProvider) ProviderName() string {
+	return conf.AuthProviderMock
+}
+
+func (m *MockProvider) GetUserByID(_ context.Context, userID string) (*User, error) {
+	for _, usr := range m.Users {
+		if usr.ID == userID {
+			return usr, nil
+		}
+	}
+
+	return nil, ErrUserNotFound
 }
 
 func (m *MockProvider) GetUserByEmail(_ context.Context, email string) (*User, error) {
@@ -113,4 +131,17 @@ func (m *MockProvider) ValidateToken(ctx context.Context, token string) (userID 
 
 func (m *MockProvider) IssueToken(_ context.Context, email string, _ Roles) (token string, err error) {
 	return fmt.Sprintf("mocktoken:%s", email), nil
+}
+
+func (m *MockProvider) CheckPassword(_ context.Context, usr *User, pass string) error {
+	if usr.pwdHash != pass {
+		return ErrInvalidPassword
+	}
+
+	return nil
+}
+
+func (m *MockProvider) SetPassword(_ context.Context, usr *User, pass string) error {
+	usr.pwdHash = pass
+	return nil
 }

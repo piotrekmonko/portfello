@@ -4,6 +4,9 @@ SELECT * FROM history ORDER BY id;
 -- name: HistoryInsert :exec
 INSERT INTO history (id, namespace, reference, event, email, created_at) VALUES ($1, $2, $3, $4, $5, $6);
 
+-- name: WalletsByAdmin :many
+SELECT * FROM wallet ORDER BY wallet.user_id, wallet.created_at;
+
 -- name: WalletsByUser :many
 SELECT * FROM wallet WHERE user_id = $1 ORDER BY wallet.created_at;
 
@@ -26,7 +29,7 @@ SELECT * FROM expense WHERE wallet_id = $1 AND wallet_id IN (
 ORDER BY id;
 
 -- name: LocalUserInsert :exec
-INSERT INTO local_user (email, display_name, roles, created_at, pwdhash) VALUES ($1, $2, $3, $4, $5);
+INSERT INTO local_user (id, email, display_name, roles, created_at, pwdhash) VALUES ($1, $2, $3, $4, $5, $6);
 
 -- name: LocalUserUpdate :exec
 UPDATE local_user SET roles = $1 WHERE email = $2;
@@ -36,6 +39,9 @@ UPDATE local_user SET pwdhash = $1 WHERE email = $2;
 
 -- name: LocalUserGetByEmail :one
 SELECT * FROM local_user WHERE email = $1;
+
+-- name: LocalUserGetByID :one
+SELECT * FROM local_user WHERE id = $1;
 
 -- name: LocalUserList :many
 SELECT * FROM local_user ORDER BY email;

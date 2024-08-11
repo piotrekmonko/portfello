@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/piotrekmonko/portfello/pkg/conf"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 // configCmd represents the config command
@@ -19,13 +20,22 @@ var configCmd = &cobra.Command{
 			return err
 		}
 
-		if showConf, _ := cmd.Flags().GetBool("show"); showConf {
+		if showConf, _ := cmd.Flags().GetBool("show-json"); showConf {
 			pretty, err := json.MarshalIndent(conf, "", "  ")
 			if err != nil {
 				return err
 			}
 
 			fmt.Printf("Parsed configuration values:\n%s\n", string(pretty))
+		}
+
+		if showConf, _ := cmd.Flags().GetBool("show-yaml"); showConf {
+			pretty, err := yaml.Marshal(conf)
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("Parsed configuration values:\n\n%s\n", string(pretty))
 		}
 
 		if showRoutes, _ := cmd.Flags().GetBool("routes"); showRoutes {
@@ -49,6 +59,7 @@ var configCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(configCmd)
-	configCmd.Flags().BoolP("show", "s", false, "Show the parsed config values")
+	configCmd.Flags().BoolP("show-json", "s", false, "Show the parsed config values as json")
+	configCmd.Flags().BoolP("show-yaml", "y", false, "Show the parsed config values as yaml")
 	configCmd.Flags().BoolP("routes", "r", false, "List available routes")
 }
